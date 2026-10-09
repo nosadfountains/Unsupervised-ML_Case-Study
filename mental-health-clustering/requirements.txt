@@ -1,0 +1,9 @@
+matplotlib==3.11.2
+mlxtend==0.25.0
+numpy==2.5.3
+pandas==3.0.6
+scikit-learn==1.9.1
+scipy==1.18.1
+seaborn==0.13.2
+setuptools==84.0.0
+yellowbrick==1.5

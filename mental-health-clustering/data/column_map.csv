@@ -47,10 +47,10 @@ position,short_name,original_question,scale_level,group,asked_of
 45,family_history_mh,Do you have a family history of mental illness?,nominal,personal,all
 46,mh_disorder_past,Have you had a mental health disorder in the past?,ordinal,personal,all
 47,mh_disorder_current,Do you currently have a mental health disorder?,ordinal,personal,all
-48,current_conditions_text,"If yes, what condition(s) have you been diagnosed with?",free text,personal,current disorder Yes
-49,suspected_conditions_text,"If maybe, what condition(s) do you believe you have?",free text,personal,current disorder Maybe
+48,current_conditions_list,"If yes, what condition(s) have you been diagnosed with?",nominal,personal,current disorder Yes
+49,suspected_conditions_list,"If maybe, what condition(s) do you believe you have?",nominal,personal,current disorder Maybe
 50,diagnosed_by_professional,Have you been diagnosed with a mental health condition by a medical professional?,binary,personal,all
-51,diagnosed_conditions_text,"If so, what condition(s) were you diagnosed with?",free text,personal,diagnosed Yes
+51,diagnosed_conditions_list,"If so, what condition(s) were you diagnosed with?",nominal,personal,diagnosed Yes
 52,sought_treatment,Have you ever sought treatment for a mental health issue from a mental health professional?,binary,personal,all
 53,interferes_when_treated,"If you have a mental health issue, do you feel that it interferes with your work when being treated effectively?",ordinal,personal,all
 54,interferes_when_not_treated,"If you have a mental health issue, do you feel that it interferes with your work when NOT being treated effectively?",ordinal,personal,all

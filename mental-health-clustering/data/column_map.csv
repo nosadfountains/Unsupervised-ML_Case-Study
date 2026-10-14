@@ -16,13 +16,13 @@ position,short_name,original_question
 14,cur_mh_equals_ph,Do you feel that your employer takes mental health as seriously as physical health?
 15,cur_observed_neg_conseq,Have you heard of or observed negative consequences for co-workers who have been open about mental health issues in your workplace?
 16,mh_coverage_self_emp,Do you have medical coverage (private insurance or state-provided) which includes treatment of  mental health issues?
-17,knows_help_resources,Do you know local or online resources to seek help for a mental health disorder?
-18,reveal_to_clients,"If you have been diagnosed or treated for a mental health disorder, do you ever reveal this to clients or business contacts?"
-19,reveal_clients_neg_impact,"If you have revealed a mental health issue to a client or business contact, do you believe this has impacted you negatively?"
-20,reveal_to_coworkers,"If you have been diagnosed or treated for a mental health disorder, do you ever reveal this to coworkers or employees?"
-21,reveal_coworkers_neg_impact,"If you have revealed a mental health issue to a coworker or employee, do you believe this has impacted you negatively?"
-22,productivity_affected,Do you believe your productivity is ever affected by a mental health issue?
-23,productivity_pct_affected,"If yes, what percentage of your work time (time performing primary or secondary job functions) is affected by a mental health issue?"
+17,knows_help_resources_self_emp,Do you know local or online resources to seek help for a mental health disorder?
+18,reveal_to_clients_self_emp,"If you have been diagnosed or treated for a mental health disorder, do you ever reveal this to clients or business contacts?"
+19,reveal_clients_neg_impact_self_emp,"If you have revealed a mental health issue to a client or business contact, do you believe this has impacted you negatively?"
+20,reveal_to_coworkers_self_emp,"If you have been diagnosed or treated for a mental health disorder, do you ever reveal this to coworkers or employees?"
+21,reveal_coworkers_neg_impact_self_emp,"If you have revealed a mental health issue to a coworker or employee, do you believe this has impacted you negatively?"
+22,productivity_affected_self_emp,Do you believe your productivity is ever affected by a mental health issue?
+23,productivity_pct_affected_self_emp,"If yes, what percentage of your work time (time performing primary or secondary job functions) is affected by a mental health issue?"
 24,has_prev_employers,Do you have previous employers?
 25,prev_benefits_provided,Have your previous employers provided mental health benefits?
 26,prev_knew_care_options,Were you aware of the options for mental health care provided by your previous employers?

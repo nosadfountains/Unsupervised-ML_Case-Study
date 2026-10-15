@@ -2,7 +2,7 @@
 
 One entry per decision or simplification. Used later for the limitations section.
 Format: what, why, likely effect, what I would do with more time.
-Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
+Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 
 ## Phase 0: working environment
 
@@ -120,7 +120,8 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 ## Phase 4: exploratory data analysis
 
 ### Column names
-- What: all 63 columns renamed by hand (lowercase with underscores, prefix `cur_` for the current employer, `prev_` for previous employers, suffix `_text` for free text, suffix `_self_emp` for columns answered only by the self-employed).
+- What: all 63 columns renamed by hand (lowercase with underscores, prefix `cur_` for the current employer, `prev_` for previous employers, suffix `_text` for free text, suffix `_list` for multi-select lists, suffix `_self_emp` for columns answered only by the self-employed).
+- Columns 48, 49 and 51 were renamed from `..._conditions_text` to `..._conditions_list` (14 Oct), because step 27b showed they are multi-select lists, not free text. Only the two "why" columns end in `_text` now.
 - Why: the original names are full questions, too long for plots and the report.
 - Likely effect: none on the results; readability only. The renaming exists only in the notebook.
 - Originals: kept in `original_columns` and in `data/column_map.csv`.
@@ -133,7 +134,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - Why: imputing would invent most of the answers (1,170 of 1,433 values for `role_is_tech`, 1,146 of 1,433 for each of the eight self-employed-only columns).
 - Likely effect: open; final handling (drop, merge or keep as subgroup descriptor) is decided in Phase 5.
 - With more time: compare results with and without these columns.
-- Open: `cur_knows_care_options` has 420 missing values, 133 more than the 287 self-employed. The source of these 133 is not yet explained (step 26b).
+- `cur_knows_care_options` has 133 gaps beyond the 287 self-employed. 127 of them come from employed people without benefits (72) or not eligible (55); everyone with benefits answered. It is not a clean skip rule, so the 133 count as non-response linked to an observed answer (checked 14 Oct).
 
 ### Columns answered by a subgroup only
 - What: eight columns (16 to 23: `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns) describe only the 287 self-employed; `role_is_tech` only the 263 employed people at non-tech employers. Until Phase 5 decides, they are not used as features for all respondents.
@@ -143,7 +144,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - Open: with eight columns answered only by the self-employed, the feature scope (#6) decides whether they are dropped or form a separate analysis of the 287 self-employed (Phase 5).
 
 ### Free-text answers
-- What: free-text columns (37, 39, 48, 49, 51) and gender are inspected only with counts, not by printing individual answers.
+- What: the free-text columns (37, 39), the condition lists (48, 49, 51) and gender are inspected only with counts, not by printing individual answers or item names.
 - Why: health details and re-identification risk (#15).
 
 ### Scale levels (step 25)
@@ -225,6 +226,8 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - Why: sensitive health data (#15); the answers describe a voluntary sample.
 - Likely effect: the shares are not prevalence rates (self-selection in a survey about mental health in tech). Ordinal for "Maybe" about a fact is the weakest use of the Maybe rule; the alternative is nominal.
 - With more time: run both readings for the two disorder columns.
+- Overlap (step 29b): the four health questions are strongly linked (89% of those with a current disorder are diagnosed; 73% give the same answer for past and current; 94% of the diagnosed have sought treatment). There are no logical contradictions to fix.
+- Open: all four in the clustering (health would dominate the distances), one or a combined score, or none and use them only to describe the clusters (fits the HR focus). Phase 5.
 
 ### Location columns (columns 57-60)
 - What: `country_live`, `country_work`, `us_state_live` and `us_state_work` are nominal. The state columns are missing exactly for people outside the US (593 and 582), which is structural.
@@ -236,8 +239,37 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - Why: one-hot encoding the raw column would create up to 263 nearly empty columns and treat "Back-end" and "Back-end|Front-end" as unrelated.
 - Open: split into one yes/no column per role (multi-hot encoding) in Phase 6.
 
+### Condition lists (columns 48, 49, 51)
+- What: the three condition columns are multi-select lists stored as one string joined with `|` (33, 23 and 34 single items). They are recorded as nominal and renamed to `_list`.
+- Why: few distinct answers relative to the number filled, long answers and the separator showed the structure; 55-65% of answers contain a separator.
+- Open: whether they enter the clustering, are used only to describe clusters (aggregated, minimum group size), or are left out (Phase 5, feature scope #6). They are special-category health data, an HR program should not target by diagnosis, and rare conditions form identifiable groups.
+
+### Reasons for interview answers (columns 37, 39)
+- What: the two "why" columns are real free text (almost every answer unique, up to 2,475 characters) and are left out of the analysis.
+- Why: they would need text analysis, which is outside the scope of the report.
+- With more time: text analysis of the reasons (for example keywords or topics).
+
+### Gender (column 56)
+- What: 1,430 answers in 70 variants (54 after removing spaces and capitals). The four most common variants cover 95%; 41 variants are used by one person each. Only the five most common variants were printed.
+- Open: cleaning in Phase 6 (#15). Options: three categories (simple, but lumps identities and creates a small identifiable group), two categories (excludes gender-diverse people, hard to justify), or gender only to describe clusters (mapping errors cannot shape the clusters; HR should not target by gender).
+
+### Country and state of living and of work (columns 57-60)
+- What: location names are clean (no synonyms or typos). Country of living and of work differ for 26 of 1,433 respondents (1.8%), US states for 41 of 837 (4.9%).
+- Open: keep only one country column and one state column (Phase 5 and 6). Work fits the HR question (employer, benefits and labour law follow the workplace); living fits access to treatment (healthcare follows residence).
+
 ### Age (column 55)
-- What: `age` is ratio-scaled. Implausible values are checked in step 28.
+- What: `age` is ratio-scaled. Median 33, middle half 28 to 39. Step 28 found three impossible values (3, 99, 323), two unusual ones (15, 17) and one plausible high value (74).
+- Plan: set 3, 99 and 323 to missing in Phase 6, so they count as non-response and the rest of each respondent's answers stays usable. Rejected: dropping the rows (loses 62 other answers per person for one wrong field) and guessing a value (no basis in the data).
+- Open: keep 15 and 17 (possible, only two) or set them to missing (the survey targets working adults; minors' data raise an extra ethical question). Phase 6.
+- Outliers: the 1.5 × IQR rule flags 35 respondents aged 55 to 74. They are real older workers and are not removed; the rule is used to find unusual values, not to decide about them.
+- Open: if age is used, as a number or in age groups (groups reduce the influence of single values and the re-identification risk). Phase 6.
+- Likely effect: without the three errors the standard deviation drops from 11.3 to 8.1, which matters for distance-based clustering.
+
+### First plots (step 29)
+- What: age histogram, a bar chart of the anonymity question, grouped bars of mental against physical health consequences, and a missing-value overview that splits each bar into "not asked" and "asked, not answered".
+- Rules: plots show shares of those who were asked, state the base in the title (for example "employed, n = 1,146"), say what was left out (the three impossible ages), and keep answers in a logical order.
+- Why: HR must be able to read the plots without the code (#7), and the missing-value plot must not make survey design look like data loss.
+- Open: which figures go into the report, and saving them as files. Phase 10.
 
 ### Codebook (step 25b)
 - What: `data/column_map.csv` has six columns: position, short name, original question, scale level, group and asked_of.
@@ -249,7 +281,37 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - What: `asked_of` records who a question was meant for, not who answered (13 rules, from "all" for 23 columns to single follow-up rules). Gaps beyond the rule are non-response and are counted in step 26.
 - Why: keeps "not asked" and "not answered" apart (Rubin).
 - Evidence: every rule was confirmed with a crosstab or a row-by-row check. The 12 employer columns with 287 gaps are missing exactly for the self-employed. The three condition free-text columns follow their gate question (current disorder Yes, Maybe; diagnosed Yes), with 7, 5 and 5 real non-responses.
-- Limits: column 19 has no clean rule and is labelled an optional follow-up; column 5 has 133 unexplained extra gaps.
+- Limits: column 19 has no clean rule and is labelled an optional follow-up; column 5 has 133 extra gaps, mostly among people without benefits, counted as non-response.
+
+### Missing values overall (step 26)
+- What: missing values are reported per column split into "not asked" and "not answered", not as one share. 21,960 of 90,279 cells (24.3%) are missing; 20,810 of them (94.8%) are "not asked"; 1,150 are non-response, in 10 columns (two free text, three condition lists, gender and four structured columns).
+- Why: a single missing share would make survey design look like data loss and would suggest dropping columns that are only answered by a subgroup.
+- Likely effect: no column is dropped because of its missing share; whether subgroup columns stay is a feature-scope question (Phase 5).
+- Open: "no answer" category or imputation for the three structured columns with non-response (Phase 6). Arguments: a category is simple, explainable for HR and treats skipping as meaningful; imputation is more principled when gaps depend on observed answers (as for `cur_knows_care_options`), but heavier and assumes the gaps can be predicted from other answers.
+- The table is rebuilt by the notebook and not saved as a separate file.
+
+### Observations (step 30)
+- What: my observations are collected in a separate doc, "My own thoughts & observations (my words)", with the numbers, charts and sources behind each one and a section of checks where a statement goes further than the data. They are notes; the report text is written new in my own words.
+- Why: the observations sit next to their evidence, and overstatements are caught before the report.
+- Observations so far: who answered the survey; age; anonymity when using mental health resources; expected consequences of discussing mental against physical health; interference with work when treated or not treated effectively.
+
+### Anonymity and resources (step 30)
+- What: "I don't know" about anonymity (65%) is read mainly as "no program to be anonymous about": 615 of the 742 either say their employer offers no resources or don't know whether it does. Where resources exist, 54% think they are protected, 3% think they are not, and 43% don't know.
+- Consequence: two levers for later: make support available and known in the first place, and, where it exists, explain how anonymity is protected.
+- Limit: both questions are perceptions; "no resources" can also mean "I don't know about the resources".
+
+### Need and access (step 30)
+- What: my first reading, "the more people need the help, the less they can rely on it", was tested and not supported. People with a current disorder report resources about as often as others (29% against 24%) and benefits more often (57% against 38%). Missing resources are equally common in every group (45-49%); those without an issue more often don't know about benefits (33% against 19%).
+- Consequence: the statement was corrected in the observations doc. The point for HR is that support is missing for almost half, whether they need it now or not, and that those who don't need it yet often don't know what exists.
+- Open: "an often reported concern" needs a source if it goes into the report; otherwise it is phrased as my own expectation.
+
+### Interference with work (step 30)
+- What: interference "often" is reported by 7% when treated effectively and by 56% when not ("Not applicable to me" excluded).
+- Limits: the wording "effectively" builds part of the gap in; self-reported; two different groups (876 and 965); not causal.
+
+### Sample description (step 30)
+- What: employed 80%, work in the US 59%, all company sizes represented, remote at least sometimes 77%, median age 33, gender about 73% male (before cleaning).
+- Consequence: the US share is the concrete reason for the one sentence on the limits of representativeness: employer-provided health benefits mean something different under a statutory system. The high remote share is an argument for digital and anonymous ways into support (Phase 9).
 
 ## Open decisions (summary)
 
@@ -260,7 +322,13 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-14 Oct 2026.
 - "I don't know" and "Not applicable" answers: one rule for all columns (own category, indicator column or missing). Phase 6.
 - `role_is_tech` and `employer_is_tech`: merge into one "works in tech" feature or keep both. Phase 5 and 6.
 - Countries and states: group into regions and "US / not US" before encoding. Phase 6.
+- Age: set 3, 99 and 323 to missing; keep or drop 15 and 17; number or age groups. Phase 6.
 - `work_position`: split into one yes/no column per role (multi-hot). Phase 6.
-- `gender`: cleaning of the free-text answers, documented as a decision (#15). Phase 6.
+- `gender`: three categories, two categories, or only to describe clusters (#15). Phase 6.
+- Condition lists (48, 49, 51): for clustering, only to describe clusters, or not at all. Phase 5.
+- The four overlapping health questions: all four, one or a combined score, or only to describe clusters. Phase 5.
+- Which observations and figures go into the report, and saving the figures as files. Phase 10.
+- A source for "an often reported concern" (need and access), or rephrase it as my own expectation. Phase 10.
+- Country and state: keep the work or the living columns, not both. Phase 5 and 6.
 - Gower distance or k-modes instead of one-hot encoding plus k-means. Phase 6 and 8.
-- The 133 extra missing values in `cur_knows_care_options`: source not yet explained (step 26b).
+- Real non-response in `cur_knows_care_options`, `observed_unsupportive_response` and `observation_less_likely_reveal`: a "no answer" category or imputation. Phase 6.

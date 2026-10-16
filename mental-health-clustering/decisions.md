@@ -2,7 +2,7 @@
 
 One entry per decision or simplification. Used later for the limitations section.
 Format: what, why, likely effect, what I would do with more time.
-Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
+Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026, Phase 5 on 16 Oct 2026.
 
 ## Phase 0: working environment
 
@@ -88,8 +88,8 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 - Why: independent work is graded and the text is checked for plagiarism.
 
 ### Open from Phase 1
-- Feature scope (#6): all questions, workplace questions only, or workplace questions for clustering with personal factors only to describe the clusters. Open until Phase 5; the justification goes into the report.
-- Role of dimensionality reduction (#12): for visualization only, or also before clustering. Open until Phase 5 and 7.
+- Feature scope (#6): all questions, workplace questions only, or workplace questions for clustering with personal factors only to describe the clusters. Decided in Phase 5 (16 Oct): all questions except free text.
+- Role of dimensionality reduction (#12): for visualization only, or also before clustering. Decided in Phase 5 (16 Oct): before clustering, with PCA.
 
 ## Phase 2: sources
 
@@ -103,7 +103,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 
 ### Method citations
 - What: Rousseeuw (1987) for the silhouette score; Roweis and Saul (2000) for LLE instead of the course book's unpublished draft. Gower distance and k-modes (Gower 1971, Huang 1998) are an alternative to one-hot encoding plus k-means.
-- Open: whether Gower distance or k-modes are used (Phase 6 and 8).
+- Decided in Phase 5 (16 Oct): not in the first iteration; one-hot and ordinal encoding with PCA and k-Means are used. MDS on a Gower distance matrix stays the "with more time" comparison.
 
 ### Citations still to verify
 - Schwarz (1978), MacQueen (1967), Ward (1963), Jolliffe, Pedregosa et al. (2011), and the German provisions (§ 87 (1) BetrVG, § 5 ArbSchG) are cited only if used and only after verification.
@@ -132,16 +132,15 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 ### Structurally missing values
 - What: `employer_is_tech`, `role_is_tech`, `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns are not imputed. Their gaps come from the survey's skip logic ("not asked"), not from non-response.
 - Why: imputing would invent most of the answers (1,170 of 1,433 values for `role_is_tech`, 1,146 of 1,433 for each of the eight self-employed-only columns).
-- Likely effect: open; final handling (drop, merge or keep as subgroup descriptor) is decided in Phase 5.
+- Handling: decided in Phase 5 (16 Oct): all are kept with "not asked" as their own category; `employer_is_tech` and `role_is_tech` are not merged.
 - With more time: compare results with and without these columns.
 - `cur_knows_care_options` has 133 gaps beyond the 287 self-employed. 127 of them come from employed people without benefits (72) or not eligible (55); everyone with benefits answered. It is not a clean skip rule, so the 133 count as non-response linked to an observed answer (checked 14 Oct).
 
 ### Columns answered by a subgroup only
-- What: eight columns (16 to 23: `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns) describe only the 287 self-employed; `role_is_tech` only the 263 employed people at non-tech employers. Until Phase 5 decides, they are not used as features for all respondents.
+- What: eight columns (16 to 23: `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns) describe only the 287 self-employed; `role_is_tech` only the 263 employed people at non-tech employers. Phase 5 (16 Oct) decided to keep them for all respondents, with "not asked" as their own category.
 - Why: for most respondents these columns contain no information.
 - Likely effect: access to help is measured by columns 4, 5 and 7 for the employed and by columns 16 and 17 for the self-employed. Openness about mental health is measured by the `cur_comfort_` and `cur_..._conseq` columns for the employed and by columns 18-21 for the self-employed; whether the two sets are comparable is not checked.
 - With more time: analyse the self-employed subgroup separately (small: 287).
-- Open: with eight columns answered only by the self-employed, the feature scope (#6) decides whether they are dropped or form a separate analysis of the 287 self-employed (Phase 5).
 
 ### Free-text answers
 - What: the free-text columns (37, 39), the condition lists (48, 49, 51) and gender are inspected only with counts, not by printing individual answers or item names.
@@ -193,7 +192,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 ### Previous-employer block (columns 24-35)
 - What: `has_prev_employers` is binary. The 11 `prev_` columns were asked only of the 1,264 respondents with previous employers; the 169 without answered none of them, with no partial answers. They are not imputed.
 - Why: the gate holds without exception, so the gaps are "not asked".
-- Likely effect: the block describes 88% of respondents. How the 169 enter the clustering (drop the block, own category, or the 1,264 only) is open until Phase 5 and 6.
+- Likely effect: the block describes 88% of respondents. The 169 enter the clustering with "no previous employer" as their own category (decided in Phase 5, 16 Oct).
 
 ### Different answer scales for previous employers
 - What: previous-employer questions use None / Some / All, current-employer questions use Yes / No / "I don't know". Their scale levels are assigned separately, and columns are not lined up by name when the two blocks are compared.
@@ -227,12 +226,12 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 - Likely effect: the shares are not prevalence rates (self-selection in a survey about mental health in tech). Ordinal for "Maybe" about a fact is the weakest use of the Maybe rule; the alternative is nominal.
 - With more time: run both readings for the two disorder columns.
 - Overlap (step 29b): the four health questions are strongly linked (89% of those with a current disorder are diagnosed; 73% give the same answer for past and current; 94% of the diagnosed have sought treatment). There are no logical contradictions to fix.
-- Open: all four in the clustering (health would dominate the distances), one or a combined score, or none and use them only to describe the clusters (fits the HR focus). Phase 5.
+- Decided in Phase 5 (16 Oct): all four enter the clustering unchanged, accepting that health may dominate the distances.
 
 ### Location columns (columns 57-60)
 - What: `country_live`, `country_work`, `us_state_live` and `us_state_work` are nominal. The state columns are missing exactly for people outside the US (593 and 582), which is structural.
 - Why: 53 and 47 distinct values would create very sparse columns and small groups that can identify people.
-- Open: group countries into a few regions and states into "US / not US" before encoding (Phase 5 and 6).
+- Open: group countries into a few regions and states into "US / not US" before encoding (Phase 6). Phase 5 kept all four columns.
 
 ### Work position (column 61)
 - What: `work_position` is a multi-select question stored as one string joined with `|`: 264 distinct values from 12 single roles; 817 respondents ticked one role, 616 ticked two to ten. It is recorded as nominal.
@@ -242,7 +241,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 ### Condition lists (columns 48, 49, 51)
 - What: the three condition columns are multi-select lists stored as one string joined with `|` (33, 23 and 34 single items). They are recorded as nominal and renamed to `_list`.
 - Why: few distinct answers relative to the number filled, long answers and the separator showed the structure; 55-65% of answers contain a separator.
-- Open: whether they enter the clustering, are used only to describe clusters (aggregated, minimum group size), or are left out (Phase 5, feature scope #6). They are special-category health data, an HR program should not target by diagnosis, and rare conditions form identifiable groups.
+- Decided in Phase 5 (16 Oct): they enter the clustering, split into one yes/no column per condition; profiles report conditions only above the minimum group size. They are special-category health data, an HR program should not target by diagnosis, and rare conditions form identifiable groups.
 
 ### Reasons for interview answers (columns 37, 39)
 - What: the two "why" columns are real free text (almost every answer unique, up to 2,475 characters) and are left out of the analysis.
@@ -255,7 +254,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 
 ### Country and state of living and of work (columns 57-60)
 - What: location names are clean (no synonyms or typos). Country of living and of work differ for 26 of 1,433 respondents (1.8%), US states for 41 of 837 (4.9%).
-- Open: keep only one country column and one state column (Phase 5 and 6). Work fits the HR question (employer, benefits and labour law follow the workplace); living fits access to treatment (healthcare follows residence).
+- Decided in Phase 5 (16 Oct): all four columns are kept. The alternative was one of each pair: work fits the HR question (employer, benefits and labour law follow the workplace); living fits access to treatment (healthcare follows residence).
 
 ### Age (column 55)
 - What: `age` is ratio-scaled. Median 33, middle half 28 to 39. Step 28 found three impossible values (3, 99, 323), two unusual ones (15, 17) and one plausible high value (74).
@@ -274,7 +273,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 ### Codebook (step 25b)
 - What: `data/column_map.csv` has six columns: position, short name, original question, scale level, group and asked_of.
 - Groups (content only): work_setting (columns 0-3, 24, 61, 62), workplace (4-15, 25-35), attitudes (18-21, 36-44), personal (16, 17, 22, 23, 45-54), demographic (55-60).
-- Why: the feature-scope decision (#6) becomes a filter on the group column.
+- Why: the feature-scope decision (#6) could become a filter on the group column. With the full scope chosen in Phase 5 no filter is needed; the groups still order the cluster profiles (workplace first).
 - Judgment calls: free text is marked by the scale level, not by a group, so `gender` stays demographic. Columns 16 and 17 are personal, because the self-employed have no employer (alternative: workplace, as mirrors of columns 4 and 7). Columns 36-44 form their own attitudes group (alternative: split into workplace and personal). Productivity (22, 23) is personal and remote work (62) is work_setting (alternative: both workplace).
 
 ### Who was asked (asked_of)
@@ -313,22 +312,93 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026.
 - What: employed 80%, work in the US 59%, all company sizes represented, remote at least sometimes 77%, median age 33, gender about 73% male (before cleaning).
 - Consequence: the US share is the concrete reason for the one sentence on the limits of representativeness: employer-provided health benefits mean something different under a statutory system. The high remote share is an argument for digital and anonymous ways into support (Phase 9).
 
+## Phase 5: plan the approach
+
+### Feature scope (#6)
+- What: all survey questions enter the clustering (option A), except the two "why" free-text columns (37, 39), which cannot be clustered without text processing.
+- Why: no prior selection, so the structure is derived from the data, not from assumptions about which questions matter. The task does not prescribe a selection.
+- Likely effect: health questions and condition lists may dominate the clusters; structurally missing blocks (self-employed, no previous employer) must be handled explicitly; more columns after encoding weaken distance measures.
+- With more time: compare with a workplace-only clustering (option C) as a second iteration.
+
+### Self-employed-only columns (16-23) and role_is_tech
+- What: kept; "not asked" is coded as its own category instead of being imputed.
+- Why: consistent with the full feature scope; the gaps come from the survey's skip logic, so imputing would invent answers.
+- Likely effect: after one-hot encoding the "not asked" columns are identical, so the self-employed/employed split is counted several times and may dominate the clustering. Must be handled in Phase 6 (remove duplicate indicators or down-weight).
+- With more time: compare with a clustering of the employed only.
+
+### Respondents without previous employers (169)
+- What: the `prev_` block is kept; "no previous employer" is coded as its own category.
+- Why: consistent with the full feature scope and with the handling of the self-employed columns; the gaps are structural, not non-response.
+- Likely effect: together with the self-employed block, the clustering may separate respondents by survey path rather than by workplace experience. Duplicate "not asked" indicators must be handled in Phase 6. Possible redundancy between the `cur_` and `prev_` blocks is tested in Phase 6.
+- With more time: compare with a clustering of the 1,264 with previous employers, and with a version without the `prev_` block.
+
+### Overlapping health questions (past, current, diagnosed, sought treatment)
+- What: all four enter the clustering unchanged.
+- Why: full feature scope; no transformation or subjective scoring.
+- Likely effect: health status is counted roughly four times in the distances and may dominate the clusters. Clusters broken down by health status are reported only above the minimum group size (special-category data).
+- With more time: compare with a combined health score or with a clustering without health questions.
+
+### Condition lists (48, 49, 51)
+- What: used in the clustering, split into one yes/no column per condition; "not asked" coded as its own category.
+- Why: full feature scope.
+- Likely effect: many sparse columns; health weighted further; rare conditions form tiny groups. Cluster profiles report conditions only above the minimum group size. Non-standard answers may need cleaning first (Phase 6, step 34).
+- With more time: group rare conditions into broader categories, or use the lists only to describe clusters.
+
+### Country and state columns
+- What: country of living, country of work and both US state columns are kept.
+- Why: full feature scope.
+- Likely effect: near-duplicates: country of living and of work differ for only 26 of 1,433 respondents, US states for 41 of 837 (Phase 4), so location counts almost twice. Many one-hot columns; the state columns are "not asked" outside the US; small countries or states form tiny groups and are reported only above the minimum group size.
+- With more time: keep one of each pair (work fits the HR question, living fits access to treatment).
+
+### employer_is_tech and role_is_tech
+- What: both kept as separate columns, each with "not asked" as its own category; not merged.
+- Why: consistent with the handling of the self-employed columns; no new merge rule needed.
+- Likely effect: two partly overlapping, gated columns remain and add to the "not asked" duplication handled in Phase 6.
+- With more time: test a merged "works in tech" feature.
+
+### Role of dimensionality reduction (#12)
+- What: dimensionality reduction is applied before clustering; the clustering runs on the reduced components, not on the encoded features.
+- Why: the many sparse columns after encoding (full feature scope, "not asked" categories, condition lists, locations) make distances less informative; reduction is meant to counter overfitting and the curse of dimensionality, and partly collapses duplicated indicator columns.
+- Likely effect: clusters are not directly interpretable in component space, so profiles are built on the original, unscaled answers. Results depend on the reduction method and the number of components kept.
+- With more time: compare with clustering on the full encoded features.
+
+### Reduction method before clustering
+- What: PCA on the one-hot (nominal) and ordinal encoded data; clustering runs on the first components.
+- Why: covered by the course concepts; loadings and the correlation circle make components explainable. One-hot encoding gives equal distances between nominal answers, ordinal encoding keeps the order, so the numeric conversion reflects the category distances.
+- Likely effect: PCA assumes numeric variance, which is only approximated for categorical data. Standardizing one-hot columns would up-weight rare answers. The first component may reflect the survey path ("not asked" blocks). Variance may be spread across many components.
+- With more time: compare with MDS on a Gower distance matrix.
+
+### Pipeline draft (step 31)
+It may change later.
+1. Load: raw CSV unchanged, apply the column renaming from column_map.
+2. Clean (Phase 6):
+   - drop the two "why" free-text columns (37, 39)
+   - standardize non-standard text: gender; split the condition lists into one yes/no column per condition
+   - check numeric outliers (age)
+   - structural gaps -> "not asked" category: self-employed block (16-23), the 12 employer columns the 287 self-employed were not asked, `role_is_tech`, `prev_` block, condition lists, US state columns, and the other gated questions recorded in `asked_of`
+   - real non-response: handling still open (step 36)
+3. Encode: one-hot for nominal columns, ordinal encoding for ordered answers.
+4. Reduce redundancy: remove identical "not asked" indicators; test `cur_`/`prev_` redundancy and the country/state pairs.
+5. Scale: open (standardize vs. leave 0/1 columns unscaled).
+6. Reduce dimensions (Phase 7): PCA; choose the number of components by cumulative explained variance; interpret loadings; 2D plot for HR with explained variance stated.
+7. Cluster (Phase 8): k-Means on the components; k via elbow and silhouette (k = 2-8); compare with GMM and/or hierarchical; check stability across seeds and minimum cluster size.
+8. Interpret (Phase 9): attach labels to the cleaned, unscaled data; profile workplace questions first, then personal factors; report health, conditions and locations only above the minimum group size.
+9. Iterations: if clusters follow the survey path or health status, document this as iteration 1 and run a variant (e.g. workplace-only, combined health score, or clustering on the full encoded features).
+
 ## Open decisions (summary)
 
-- Feature scope (#6): all questions, workplace questions only, or a hybrid. Phase 5.
-- Role of dimensionality reduction (#12): visualization only or also before clustering. Phase 5 and 7.
-- The eight self-employed-only columns (16 to 23): drop them or analyse the 287 self-employed separately. Phase 5.
-- The 169 respondents without previous employers: drop the `prev_` block, own category, or cluster the 1,264 only. Phase 5 and 6.
+- Step 32: keep, drop or merge per column, with a one-line reason. Phase 5.
 - "I don't know" and "Not applicable" answers: one rule for all columns (own category, indicator column or missing). Phase 6.
-- `role_is_tech` and `employer_is_tech`: merge into one "works in tech" feature or keep both. Phase 5 and 6.
+- Duplicate "not asked" indicator columns: remove the duplicates or down-weight them. Phase 6.
+- Ordinal columns with a "not asked" category: one-hot encode them, or ordinal encoding plus a separate "not asked" indicator. Phase 6.
+- Scaling: standardize (up-weights rare answers) or leave the 0/1 columns unscaled. Phase 6.
+- Redundancy between the `cur_` and `prev_` blocks, checked on a common coding. Phase 6.
 - Countries and states: group into regions and "US / not US" before encoding. Phase 6.
 - Age: set 3, 99 and 323 to missing; keep or drop 15 and 17; number or age groups. Phase 6.
 - `work_position`: split into one yes/no column per role (multi-hot). Phase 6.
-- `gender`: three categories, two categories, or only to describe clusters (#15). Phase 6.
-- Condition lists (48, 49, 51): for clustering, only to describe clusters, or not at all. Phase 5.
-- The four overlapping health questions: all four, one or a combined score, or only to describe clusters. Phase 5.
+- `gender`: three categories, two categories, or only to describe clusters (#15; the last option would be an exception to the full feature scope). Phase 6.
+- Real non-response in `cur_knows_care_options`, `observed_unsupportive_response` and `observation_less_likely_reveal`: a "no answer" category or imputation. Phase 6.
+- Number of PCA components used for clustering. Phase 7.
 - Which observations and figures go into the report, and saving the figures as files. Phase 10.
 - A source for "an often reported concern" (need and access), or rephrase it as my own expectation. Phase 10.
-- Country and state: keep the work or the living columns, not both. Phase 5 and 6.
-- Gower distance or k-modes instead of one-hot encoding plus k-means. Phase 6 and 8.
-- Real non-response in `cur_knows_care_options`, `observed_unsupportive_response` and `observation_less_likely_reveal`: a "no answer" category or imputation. Phase 6.
+- Citable sources for reducing dimensions before clustering and for PCA on categorical data (the course book cannot be cited). Phase 10.

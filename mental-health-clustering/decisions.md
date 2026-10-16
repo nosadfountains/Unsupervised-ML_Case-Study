@@ -2,7 +2,7 @@
 
 One entry per decision or simplification. Used later for the limitations section.
 Format: what, why, likely effect, what I would do with more time.
-Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026, Phases 5 and 6 on 16 Oct 2026.
+Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026, Phases 5 to 7 on 16 Oct 2026.
 
 ## Phase 0: working environment
 
@@ -472,10 +472,38 @@ It may change later.
 - Likely effect: lossless for every person. The survey path still counts once and may still shape a component or cluster, which is a real difference, since the self-employed answer different questions. Near-duplicates are left to PCA. The `cur_`/`prev_` check is pairwise only; a block could still be largely explained by the other block as a whole.
 - With more time: test block-level redundancy (e.g. how well the `prev_` block predicts the `cur_` block) and compare with also removing the near-duplicates.
 
+## Phase 7: dimensionality reduction
+
+### Number of PCA components (step 42)
+- What: PCA with all components on `X` (1,433 × 249, unscaled). No single number is fixed yet: two candidates go into the clustering, 4 components (the elbow of the scree plot, about 22% of the variance) and 47 components (70% of the variance). The final number is chosen in step 49 together with the clustering model, by stability across random seeds and how interpretable the profiles are. The elbow candidate was confirmed at 4 after step 43 (see below).
+- Result: PC1 explains 7.7%, PC2 5.9%, the first two together 13.6%, the first ten about 35%. The scree plot bends clearly after 4 components and slightly again after 7 (2.4% to 2.0%); from about 13 on it is almost flat. Components needed for 50% / 70% / 80% / 90%: 22 / 47 / 65 / 94. The cumulative curve reaches almost 100% at about 150 components; the rest carry almost no variance, partly because the one-hot columns of a question with three or more answers add up to 1, partly because rare answers have very little spread.
+- Why: the elbow keeps the strongest structure in few dimensions, where k-Means works best and every component can be explained; 70% keeps most of the information. Neither rule is clearly right for categorical survey data, so the choice rests on the clustering result, and the comparison gives one of the documented iterations (#9).
+- Rejected as the only rule: the elbow alone (drops about three quarters of the variance; the components with the most variance need not separate groups; PC1 may only reflect the survey path); 80% or 90% alone (65 or 94 dimensions weaken distances again and come close to clustering on `X` itself, since PCA only rotates the data); eigenvalue above 1 (only meaningful for standardized data); above-average variance and parallel analysis (less subjective, but no citable source in the source set, and parallel analysis needs extra code).
+- Likely effect: the clustering runs twice in Phase 8. Silhouette scores are not compared between the two candidates, because they tend to look better in fewer dimensions. The 2D plot keeps only 13.6% of the variance; this is stated next to every 2D figure (#7).
+- With more time: parallel analysis as a rule-based check of the number of components.
+
+### Component interpretation (step 43)
+- What: the first seven components are read from their 8 strongest weights (of 249); the labels of PC1 and PC2 are tested against the data (average component score per answer group).
+- Result:
+  - PC1 (7.7%): health status (past or current disorder, diagnosis, treatment vs. none). Test: average PC1 score +1.36 for "No" current disorder (531), +0.20 for "Maybe" (327), -1.37 for "Yes" (575).
+  - PC2 (5.9%): self-employed vs. employed (survey path). Test: self-employed +2.48 (287), employed -0.62 (1,146).
+  - PC3 (4.6%): openness vs. perceived stigma at the current workplace (comfort with coworkers and supervisor, expected career harm, raising it in an interview).
+  - PC4 (3.4%): support from previous employers (none vs. some), mixed with US vs. outside the US.
+  - PC5 (2.8%): "Some" and "Maybe" answers; mixed experiences across previous employers, or a habit of picking middle answers.
+  - PC6: having seen poor handling (mainly at previous employers) vs. not; partly also having previous employers or not.
+  - PC7: US vs. outside the US, mixed with no negative consequences seen at previous employers.
+- Correlation circle (PC1, PC2): the 12 longest arrows (length 0.70-0.94) are all health columns along PC1 (r 0.69-0.80) or self-employment columns along PC2 (r 0.72-0.93), at right angles to each other, so the two patterns are nearly unrelated. `cur_observed_neg_conseq_No` (r -0.82 with PC2) shows the survey path still counts more than once: almost every employed person answered "No", so the column is close to "not self-employed" (a near-duplicate that step 40 left to PCA). The 2D view shows health and self-employment well and other topics hardly at all, which matters for the 2D plot for HR.
+- Finding: the current employer's support (benefits, resources, knowing the care options), HR's main lever, has no component of its own among the first seven.
+- Why: PCA on unscaled one-hot data gives a topic more weight the more columns it has. Health has 4 questions, 35 condition columns and the interference questions; previous employers have 11 questions with 3-5 answers each; current support has a few questions. The order of the components partly reflects the encoding, not only how much people differ.
+- Decision: the elbow candidate stays at 4. Rejected: 5 (adds the unclear PC5) and 7 (adds having seen poor handling, but brings location in a second time, PC5 may be an answering habit, and the second bend is weak). Current support is expected to enter through the 47-component candidate.
+- Likely effect: the 4-component clustering will probably split people by health status and self-employment, neither of which HR can act on. The self-employed sit far from everyone else on PC2 and will likely form their own cluster. This would be iteration 1; a variant (employed-only or workplace-only) becomes likely for iteration 2.
+- With more time: weight each question equally (multiple correspondence analysis), so topics with many columns do not dominate the components.
+
 ## Open decisions (summary)
 
 - Minimum group size for reporting: 10 proposed (same as the condition threshold in step 34b); confirm before Phase 9.
-- Number of PCA components used for clustering. Phase 7.
+- Number of PCA components used for clustering: two candidates from step 42 (4 and 47); elbow candidate confirmed after step 43; final choice in step 49 (Phase 8).
+- Nonlinear method (step 44): skip and log as omission, MDS for the 2D plot only, MDS on Gower as a second clustering input, or LLE. Phase 7.
 - Which observations and figures go into the report, and saving the figures as files. Phase 10.
 - A source for "an often reported concern" (need and access), or rephrase it as my own expectation. Phase 10.
 - Citable sources for reducing dimensions before clustering and for PCA on categorical data (the course book cannot be cited). Phase 10.

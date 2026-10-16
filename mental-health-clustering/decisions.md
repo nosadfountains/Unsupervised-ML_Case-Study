@@ -271,7 +271,7 @@ Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026, Phase 5 
 - Open: which figures go into the report, and saving them as files. Phase 10.
 
 ### Codebook (step 25b)
-- What: `data/column_map.csv` has six columns: position, short name, original question, scale level, group and asked_of.
+- What: `data/column_map.csv` has six columns: position, short name, original question, scale level, group and asked_of. Step 32 added `decision` and `reason` (eight columns since 16 Oct).
 - Groups (content only): work_setting (columns 0-3, 24, 61, 62), workplace (4-15, 25-35), attitudes (18-21, 36-44), personal (16, 17, 22, 23, 45-54), demographic (55-60).
 - Why: the feature-scope decision (#6) could become a filter on the group column. With the full scope chosen in Phase 5 no filter is needed; the groups still order the cluster profiles (workplace first).
 - Judgment calls: free text is marked by the scale level, not by a group, so `gender` stays demographic. Columns 16 and 17 are personal, because the self-employed have no employer (alternative: workplace, as mirrors of columns 4 and 7). Columns 36-44 form their own attitudes group (alternative: split into workplace and personal). Productivity (22, 23) is personal and remote work (62) is work_setting (alternative: both workplace).
@@ -385,9 +385,15 @@ It may change later.
 8. Interpret (Phase 9): attach labels to the cleaned, unscaled data; profile workplace questions first, then personal factors; report health, conditions and locations only above the minimum group size.
 9. Iterations: if clusters follow the survey path or health status, document this as iteration 1 and run a variant (e.g. workplace-only, combined health score, or clustering on the full encoded features).
 
+### Keep, drop or merge per column (step 32)
+- What: `column_map` has two new columns, `decision` (61 keep, 2 drop, 0 merge) and `reason` (one line per column), saved to `data/column_map.csv` (63 rows, 8 columns). Dropped: the two "why" free-text columns (37, 39).
+- Why: follows from the Phase 5 decisions; the codebook stays the one place the code filters on in Phase 6.
+- Kept after a separate look: `self_employed` and `has_prev_employers` (they repeat the "not asked" indicators of their blocks), `family_history_mh` (health-related, but not one of the four health questions), `reveal_clients_neg_impact_self_emp` (weakest column: 143 of 287 self-employed did not answer, and it measures perceived impact), `gender` (cleaning in Phase 6).
+- Likely effect: the same as for the full feature scope; the duplication is handled in Phase 6 (step 40).
+- With more time: drop the weakest columns and compare the clusters.
+
 ## Open decisions (summary)
 
-- Step 32: keep, drop or merge per column, with a one-line reason. Phase 5.
 - "I don't know" and "Not applicable" answers: one rule for all columns (own category, indicator column or missing). Phase 6.
 - Duplicate "not asked" indicator columns: remove the duplicates or down-weight them. Phase 6.
 - Ordinal columns with a "not asked" category: one-hot encode them, or ordinal encoding plus a separate "not asked" indicator. Phase 6.

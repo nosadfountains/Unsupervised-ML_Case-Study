@@ -25,7 +25,7 @@ The data path in the notebook is relative (`data/raw/...`), so the notebook has 
 
 `figures/clusters_2d.png` is saved by the notebook. The other figures (`scree_iteration1.png`, `scree_iteration2.png`, `k_selection_iteration2.png`, `ward_dendrogram_iteration2.png`) are the plots of the stored notebook run, exported unchanged for the appendix of the report.
 
-## Results in brief
+## Results (short summary)
 
 - Iteration 1 with all 1,433 respondents was shaped mainly by the survey's structure (self-employed vs. employed) and by health status. Iteration 2 therefore uses the 1,146 employees only.
 - Final model: k-means with k = 4 on six principal components. All silhouette values stay below 0.25, so the segments divide a continuous range of answers rather than separate types; the four profiles replicate under a Gaussian mixture model and Ward's clustering.

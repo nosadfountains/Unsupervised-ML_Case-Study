@@ -1,509 +1,180 @@
 # Decisions and omissions
 
-One entry per decision or simplification. Used later for the limitations section.
-Format: what, why, likely effect, what I would do with more time.
-Phases 0-2 were done on 9-10 Oct 2026, Phase 3 and 4 on 12-15 Oct 2026, Phases 5 to 7 on 16 Oct 2026.
-
-## Phase 0: working environment
-
-### Python version
-- What: Python 3.14 (python.org); the installed 3.15 alpha is not used.
-- Why: 3.15 was only a pre-release, and scikit-learn and matplotlib did not support it yet.
-- Likely effect: all libraries install and run on a stable version.
-- With more time: move to a newer Python once the libraries support it.
+This file documents the decisions and simplifications behind `analysis.ipynb`: what was decided, why, the likely effect and, where relevant, what I would do with more time. It is the basis for the critical reflection in the report.
+
+## Preparation: Working environment
+
+- **Python 3.14** (python.org) is used. The installed 3.15 alpha is not, because scikit-learn and matplotlib did not support it yet.
+- **No virtual environment:** to keep the setup simple, I installed all packages directly into Python 3.14 and always call it as `python3.14` or `python3.14 -m pip`, so that the 3.15 alpha cannot be used by mistake. The package versions are listed in `requirements.txt`.
+- **Tools:** VS Code on Mac (iOS) (`analysis.ipynb`). pandas 3.0 is used.
+
+## Phase 1: Understanding the problem
+
+- **Task and data:** Task 1 (mental health in technology-related jobs) with the OSMI Mental Health in Tech Survey 2016 from Kaggle. Only the CSV file is used (1,433 respondents, 63 questions).
+- **Representativeness:** as the task states, the survey counts as representative of the company's staff. Since this is a premise of the case, the report spends only one sentence on self-selection and the US-heavy sample.
+- **What the results can show:** the clusters describe who answers similarly, not what causes mental health problems, and the survey is a single snapshot. Hence, the levers for HR are presented as hypotheses backed by literature. The report also names the limits of a workplace program, as mental health depends on factors outside the employer's control as well.
+- **Industry context:** I describe the respondents as sharing an industry context, not shared values, because "technology-oriented" describes the field of work rather than attitudes.
+- **HR as the audience:** few segments with neutral names, plots with a short reading aid and the explained variance, and recommendations sorted by effort and impact. Long-term structural measures are marked as such, since quick measures can stay superficial.
+- **Two kinds of concept:** the technical approach is described in the methodology, the organizational implementation concept for HR in chapter 4.
+- **Order of methods:** exploration, planning, preprocessing and feature engineering, dimensionality reduction, clustering, evaluation, interpretation, and iteration. Only the iterations that changed the result are documented in the report; the rest stays in the notebook and the commit history.
+- **Number of clusters:** there is no ground truth, and the task does not give k. Therefore, k is justified with metrics and with how interpretable the segments are.
+- **Ethics:** health data are special-category data under the GDPR, and small groups can identify people. Hence, results are reported only in aggregate and for groups of at least 10 people (fixed in Phase 9), segment names are neutral, and the segments serve only to design the program, never to identify individuals.
+- **Publishing:** the unchanged CSV is stored in `data/raw/` under its original file name; the license (CC BY-SA 4.0) and OSMI are credited in the README. Neither the task PDF nor the task text is published, as IU holds the copyright.
+- **Writing:** figures in the introduction need citable sources, and omissions are logged in this file.
+
+## Phase 2: Sources
+
+- **What is cited:** peer-reviewed or primary sources in APA 7th edition, following the IU citation guidelines. 
+- **Source set:** 12 core sources plus the GDPR, covering mental health at work, the Job Demands-Resources model, the dataset, the methods, missing data, ethics, and workplace interventions. Several intervention sources stem from one research network (Harvey, Joyce, and Gayed), which the report mentions in one sentence.
+- **Methods:** Rousseeuw (1987) for the silhouette coefficient; Gower (1971) and Huang (1998) for distances and clustering with categorical data. As I used one-hot encoding with PCA and k-means, Gower distances remain a comparison for "with more time".
+- **Recommendations:** structured by prevention level (Joyce et al., 2016), with the evidence ratings of WHO (2022).
+
+## Phase 3: Data
+
+- The raw CSV stays unchanged; all cleaning happens in the notebook, so everything can be reproduced.
+
+## Phase 4: Exploratory data analysis
+
+### Column names and codebook
+- All 63 columns were renamed by hand to short names: prefix `cur_` for the current employer and `prev_` for previous employers, suffix `_self_emp` for questions only the self-employed were asked, `_list` for multi-select lists, and `_text` for free text.
+- The codebook `data/column_map.csv` records for each question its short name, the original question, the scale level, a content group (work setting, workplace, attitudes, personal, demographic), who was asked (`asked_of`) and, since Phase 5, the decision to keep or drop it with a reason. The content groups set the order of the segment profiles (workplace first).
+- Lesson learned: check who was asked a question before naming the column. Column 17, for example, looked like a question for everyone but was asked only of the self-employed.
+
+### Who was asked and missing values
+- `asked_of` records who a question was meant for, not who answered (13 rules, each confirmed with a crosstab). Gaps outside these rules count as non-response. Two exceptions: column 19 is an optional follow-up for the self-employed, and `cur_knows_care_options` has 133 gaps beyond the self-employed, mostly from employees without benefits (72) or not eligible (55).
+- 21,960 of 90,279 cells (24.3%) are empty, but 20,810 of them (94.8%) are questions the skip logic never asked. Only 1,150 cells in 10 columns are non-response. Hence, no column was dropped because of its missing share, and missing values are always reported as "not asked" and "not answered" separately.
+- Eight questions (16–23) were asked only of the 287 self-employed, `role_is_tech` only of the 263 employees at non-tech employers, and the 11 `prev_` questions only of the 1,264 respondents with previous employers (without exception). None of them were imputed (see Phase 5).
+
+### Scale levels and answer scales
+- Scale levels were assigned per column by judgment and stored in the codebook: "Yes / No / I don't know" as nominal, "Yes / Maybe / No" as ordinal, company size as ordinal, and two-value columns as binary. Since all columns were one-hot encoded in the end (Phase 6), the scale levels set the order of the answers in tables and profiles but do not enter the encoding.
+- Judgment calls that matter for reading the results:
+  - "I don't know" is not a midpoint and is informative in itself (742 of 1,146 employees chose it for anonymity).
+  - "Yes" is the bad answer in the consequence questions but the good answer in the comfort questions.
+  - In the five-point questions on career harm and coworkers' views, answers that report experience ("Yes, it has", "No, it has not") sit at the ends of the scale.
+  - Previous-employer questions use None / Some / All, current-employer questions Yes / No / "I don't know", so the two blocks are not compared by column name. Observed negative consequences (40% at previous employers, 9% at the current one) are not compared as rates either, since the previous-employer question covers several employers.
+  - The answers of the self-employed on revealing a condition to clients and coworkers measure perceived rather than experienced impact.
+
+### Single columns
+- **Free text and privacy:** the two "why" answers, the condition lists, and gender were inspected only with counts, not by printing individual answers (one exception: the first look at five raw rows, see Phase 10).
+- **Multi-select lists:** the three condition lists (33, 23, and 34 single items) and the work position (12 roles in 264 combinations) are stored as text joined with "|" and were split in Phase 6.
+- **Gender:** 70 spellings; the four most common cover 95%, and 41 are used by one person each.
+- **Location:** the names are clean. Country of living and country of work differ for 26 of 1,433 respondents (1.8%), the US states for 41 of 837 (4.9%).
+- **Age:** median 33 (middle half 28 to 39). Three values are impossible (3, 99, 323) and two unusual (15, 17). The 1.5 × IQR rule flags 35 respondents aged 55 to 74; as they are plausible older workers, they were not removed.
+- **Health questions:** past and current disorder, diagnosis, and treatment are strongly linked (89% of those reporting a current disorder are diagnosed, and 94% of the diagnosed have sought treatment). "Not applicable to me" in the two interference questions most likely means "no condition". Since the sample is self-selected, the shares are not prevalence rates.
+- **Figures:** plots show the shares of those who were asked, name the base in the title (e.g., "employees, n = 1,146"), and keep the answers in a logical order.
+
+### Exploratory findings
+- **Anonymity:** 65% of the employees do not know whether their anonymity would be protected, and 615 of these 742 say that their employer offers no resources or that they do not know of any. Where resources exist, 54% consider their anonymity protected. This points to two levers: making support available and known, and explaining how anonymity is protected. Both questions measure perceptions.
+- **Mental vs. physical health:** 19% of the employees expect negative consequences from discussing a mental health issue with their employer, but only 4% from discussing a physical one.
+- **Need and access:** my expectation that those who need help most can rely on it least was not supported. Employees who report a current condition mention resources (29% vs. 24%) and benefits (57% vs. 38%) more often than the others, and missing resources are about equally common in all groups (45% to 49%).
+- **Interference with work:** 7% report frequent interference when treated effectively, 56% when not. These are self-reports from two different groups, not a causal effect, and the word "effectively" builds part of the gap into the question.
+- **Sample:** 80% employees, 59% work in the US, median age 33, 77% work remotely at least sometimes, and about 73% male (before cleaning). The US share matters, because employer health benefits mean something different under a statutory health system.
+
+## Phase 5: Planning the approach
+
+- **Feature scope:** I kept all questions except the two free-text "why" answers (61 of 63), so that the structure comes from the data rather than from my preselection. The task does not prescribe a selection.
+  - Rejected: workplace questions only; workplace questions for the clustering with personal factors only for the profiles.
+  - Effect: health and the survey path can dominate, and the encoding creates many sparse columns.
+  - With more time: a workplace-only clustering as a comparison.
+- **Gaps from the skip logic:** kept as a category of their own ("not asked"; "no previous employer" for the 169 respondents without one) instead of being imputed, since imputing would invent answers to questions that were never asked. As a result, the survey path enters the data many times, which is handled in Phase 6. With more time: separate analyses of the self-employed and of the respondents with previous employers.
+- **Health questions:** all four (past and current disorder, diagnosis, treatment) enter unchanged, although health is thereby counted about four times. With more time: one combined health score.
+- **Condition lists and locations:** both enter the clustering (refined in Phase 6: rare conditions grouped, countries grouped into regions).
+- **Tech employer and tech role:** `employer_is_tech` and `role_is_tech` stay separate, as merging them would need a rule of its own.
+- **Dimensionality reduction:** applied before the clustering, with PCA on the one-hot encoded data, because the many sparse columns make distances less informative and the PCA loadings can be explained. As PCA treats categorical data only approximately, MDS on Gower distances remains a comparison for "with more time". Since clusters cannot be read in component space, the segments are described with the original answers.
+- **Keep or drop per column:** the codebook holds a decision and a one-line reason for each question (61 kept, 2 dropped). Kept after a closer look: `self_employed` and `has_prev_employers` (they repeat the "not asked" pattern of their blocks), `family_history_mh`, `reveal_clients_neg_impact_self_emp` (the weakest column: 143 of 287 self-employed did not answer it), and `gender`.
+
+### Final pipeline
+1. Load the raw CSV and rename the columns with the codebook.
+2. Clean: drop the two "why" columns, map gender, split the multi-select lists, group ages and countries, and label the gaps "not asked" or "no answer".
+3. Encode all text columns one-hot without scaling, add two domain scores, and remove exact copies and opposites.
+4. Reduce the dimensions with PCA (MDS for the 2D view).
+5. Cluster with k-means, compare with a Gaussian mixture model (GMM) and Ward clustering, and check the stability.
+6. Describe the clusters with the original answers, name them, and derive levers for HR.
+
+## Phase 6: Preprocessing and feature engineering
+
+- **Dropped columns:** `df_clean` is a working copy without the two "why" columns (1,433 × 61); `df` stays unchanged. I set no threshold for missing values, as most gaps are "not asked". A column would count as near-constant if one value (including "not asked") covered 95% of all rows; none did (highest: 0.900). Within its subgroup, `role_is_tech` is almost constant (248 of 263 "Yes"), which this rule does not catch.
+- **Gender:** mapped to three categories by a rule ("f" or containing "female" or "woman" becomes female; then "m", "male", or "man" as a word becomes male; everything else becomes other): male 1,054, female 342, other 34, empty 3. Three categories keep gender-diverse respondents in the data, and the rule avoids reading individual answers. However, the rule cannot be checked answer by answer, and "other" (29 spellings) probably mixes gender-diverse answers with typos. With more time: review the "other" spellings by hand.
+- **Condition lists:** split into one 0/1 column per condition. As 54 of the 90 single conditions were named by fewer than five people, I grouped all conditions named by fewer than 10 people into one `other_condition` column per list. Result: 32 condition columns plus 3 `other_condition` columns (1 for 28, 23, and 32 people). Very different conditions share one column, and spelling variants were not merged.
+- **Work position:** split into 12 role columns. 817 respondents name one role and 616 two to ten; the 15 with seven or more roles sit far from everyone else in distance-based methods.
+- **Age:** the impossible values were set to missing, 15 and 17 were kept (plausible, e.g., interns), and age was grouped into four bands: under 25 (125), 25–34 (710), 35–44 (442), 45 and over (153), missing 3. Bands reduce the influence of single values and the risk of re-identification. However, differences within a band are lost, and the band limits are my choice.
+- **Missing values:** I did not impute but labeled every gap as "not asked" (18,129 cells) or "no answer" (491 cells), based on the `asked_of` rules. In the condition lists, empty rows became 0, plus two indicator columns per list. For the skip-logic gaps, this treats the survey path as information instead of inventing answers. For the non-response, the gaps can be related to the answers (in `cur_knows_care_options` mainly to having no benefits), so they stay visible as a category (Rubin, 1976). With more time: imputation (e.g., `IterativeImputer`) as a comparison.
+- **Regions:** countries were grouped into five regions (US, Canada, UK, rest of Europe, rest of world; "Other" counts as rest of world, Russia as Europe; checked in the notebook), and the two US state columns were dropped, as they would only repeat the US region. This changes the Phase 5 decision, and differences within a region (e.g., labor law and health systems within Europe) are lost.
+- **Encoding:** all 52 text columns were one-hot encoded, so every answer, including "not asked", "no answer", "I don't know", and "Not applicable", became a 0/1 column (286 columns in total). This needs no artificial order and no aligned "Yes" direction. On the other hand, the order of the answers is lost, and cluster centers become fractions that match no real answer (Huang, 1998).
+- **No scaling:** all columns are already 0/1, so standardizing would only give rare answers the largest weights. In return, rare answers hardly influence the components (66 columns have a 1 for fewer than 5% of the respondents). With more time: weighting each question equally (multiple correspondence analysis).
+- **Domain scores:** two scores from 0 to 1.
+  - Known support is the share of four support offers answered "Yes" (benefits, resources, formal discussion, anonymity; "I don't know" counts as 0; employees only; mean 0.30). It describes the segments but is not a clustering input.
+  - Perceived stigma averages expected career harm, coworkers' negative view, and not raising mental health in a job interview (all respondents; mean 0.62). It is part of the input, next to its source columns.
+  - Equal weights are my choice, and stigma is counted twice, though only modestly, as its spread is small.
+- **Redundancy:** 38 columns that were exact copies or opposites of others were removed, keeping answer columns in preference to "not asked" columns. Without this removal, being self-employed or not would have entered the data about 22 times and having previous employers about 12 times. Nine near-duplicate pairs (e.g., region of living vs. region of work) were left to PCA. No pair of current- and previous-employer columns correlates at 0.9 or more, so both blocks stay; however, this only checks pairs, not whole blocks. Result: `X` with 1,433 rows and 249 columns.
+
+## Phase 7: Dimensionality reduction (iteration 1, all respondents)
+
+- **Number of components:** the PCA spreads the variance thinly: PC1 explains 7.7%, PC2 5.9% (13.6% together), and 50%, 70%, 80%, and 90% need 22, 47, 65, and 94 components. As no rule is clearly right for categorical survey data, I carried two candidates forward: 4 components at the bend of the scree plot (about 22%) and 47 for 70%.
+  - Rejected: eigenvalues above 1 (meaningful only for standardized data); 80% or 90% (too many dimensions again); parallel analysis (no source in the source set; with more time).
+  - Silhouette scores are not compared between the candidates, as they tend to look better in fewer dimensions.
+- **What the components mean:** PC1 reflects health status (mean score +1.36 for "no current disorder", −1.37 for "yes"), PC2 separates the self-employed from the employees (+2.48 vs. −0.62), and PC3 openness versus perceived stigma. The current employer's support has no component of its own among the first seven. This suggests that topics asked through many overlapping columns dominate: health through four questions, two interference questions, and 35 condition columns, and self-employment because all employer questions become "not asked" at once.
+- **MDS for the 2D view:** non-metric MDS on the same `X` serves as a check of the PCA view, not as a clustering input. Its 2D view keeps the order of the distances better (rank correlation 0.70 vs. 0.56 for the PCA view; Stress-1 0.32), partly because this is what MDS optimizes. Both views show the same two patterns, but PCA makes the gap between the self-employed and the employees look sharper. Hence, the figure shows the PCA view (main view, explainable axes) and the MDS view (check) side by side.
+  - Rejected: LLE (many identical distances in 0/1 data make the neighbor search unstable); MDS on Gower distances (a different input would make the comparison unfair).
+
+## Phase 8: Clustering
+
+- **Iteration 1, all respondents:** k-means with k = 4 as a first guess (two main splits, four combinations), ten random starts, and a fixed seed (`random_state=42`) on both candidates. All 287 self-employed formed one cluster of their own, and the employees were split mainly by health; the two candidates agreed for 97% of the respondents. The two clusters of employees who mostly report a current condition differ in known support (0.44 vs. 0.22) and perceived stigma (0.55 vs. 0.78), which is the first pattern HR could act on. As the answers behind the support score are part of the input, this difference describes the clusters rather than confirming them.
+- **Iteration 2, employees only:** I restricted the analysis to the 1,146 employees, as the company's staff are employees and the self-employed have no employer to act on. Additionally, the survey path would have dominated the choice of k. The 32 columns with only one value among employees and one column each of two pairs that became exact opposites were removed (`X_emp`, 1,146 × 215), and the PCA was fitted again. The self-employed remain the separate group found in iteration 1.
+  - Rejected: continuing with all respondents; employees with health used only for the profiles (a possible iteration 3).
+- **Components in iteration 2:** PC1 health status (r = −0.73 with a current disorder), PC2 openness versus stigma (r = −0.65 with perceived stigma, +0.44 with known support), PC3 support at previous employers together with working in the US, PC4 uncertainty ("Some", "Maybe", and "I don't know" answers), PC5 having seen mental health issues handled poorly, and PC6 working in the US mixed with current support. PC1 and PC2 explain 8.2% and 5.6% (13.8% together).
+- **Six components:** the scree plot bends after three (17.6%) and after six components (26.4%), so I let the content decide. Three components represent only about 30% of known support, six about 66%, while health (63% vs. 67%) and stigma (56% vs. 57%) hardly change. As known support is HR's main lever, I chose six; 44 components (70%) serve only as a stability check. However, k-means weighs each component by its variance, so health (8.2%) still counts about three times as much as PC6 (2.7%), which partly reflects location. PC4 may partly be an answering habit.
+- **Number of clusters:** k-means for k = 2 to 8. There is no clear elbow, and the silhouette coefficient is highest for k = 2 (0.229) and 0.164 for k = 4. All values stay below 0.25, which suggests a continuous range of answers rather than separate types. As the measures could not decide, I compared the profiles and chose k = 4, the smallest k that splits both health groups into a more open and a more wary part. From k = 4 on, the prevention group appears (segment D: no current condition, high perceived stigma, little known support), the most relevant group for a preemptive program.
+  - Rejected: k = 2 (health only, which HR cannot act on); k = 3 (hides the prevention group); k = 5 (adds an "uncertain" cluster that partly reflects an answering habit, is harder to communicate, and is less stable).
+- **Method comparison:** a GMM and Ward's hierarchical clustering on the same six components. The memberships agree only moderately (adjusted Rand index, ARI, 0.43 and 0.42; about 71% in the matching cluster), and 15% of the employees sit between two GMM clusters. However, all three methods find the same two-by-two pattern of health and openness versus stigma: perceived stigma is highest in C and lowest in A, known support is highest in B, and every method finds the prevention group. The prevention group is the least stable (52% to 54% matched). k = 3 would give more stable memberships (ARI 0.64 and 0.50) but hide the prevention group, so I kept k = 4 and describe the segments as tendencies with approximate sizes. As Ward and k-means both minimize the spread within clusters, the GMM is the stronger test. The BIC points to no clear k.
+- **Final model:** k-means with k = 4 on six components (`n_init=10`, `random_state=42`). Across ten other seeds, the ARI is 0.97 to 1.00; with 44 components, it is 0.89 (96% identical). Hence, the moderate agreement with GMM and Ward stems from the method, not from chance or the number of components. The smallest cluster holds 259 employees.
+- **Figure:** `figures/clusters_2d.png` shows the PCA view and the MDS view side by side. Color shows openness (blue more open, orange more wary), shape the health context (circles mostly without, triangles mostly with a current condition), and the letters A to D mark the cluster centers. The two colors were checked with a color-vision simulation, and the shapes keep the clusters apart in print. In the PCA view, the clusters form a grid with straight boundaries, as k-means cuts a continuous cloud; the MDS view, computed independently of the clustering, shows the same four regions with blurred boundaries. The caption needs the 13.8% of variance, the note that the clustering used six components, the MDS fit (Stress-1 0.32; rank correlation 0.71 vs. 0.54 for PCA), and the note that the segments overlap.
+
+## Phase 9: Interpretation and recommendations
+
+- **Segments with the original answers:** the cluster labels and both scores were attached to the employees' readable answers (`segments`, 1,146 × 112): A 259, B 321, C 285, D 281.
+- **Minimum group size:** answers, health details, conditions, and locations are reported per segment only where at least 10 people share them (`min_group = 10`), the same threshold as for the condition columns. Rejected: 5 (higher risk of re-identification) and 20 (hides most rare conditions). The company's own survey uses the same threshold; the remaining risk that colleagues recognize each other in groups of 10 to 19 is named in the report.
+- **Profiles:** shown workplace first, as a plain list of distinctive answers would lead with diagnoses. Key workplace answers (share of employees in %; "–" means fewer than 10 people):
+
+| Answer | A | B | C | D | All |
+|---|---|---|---|---|---|
+| Employer provides mental health benefits | 36 | 69 | 43 | 33 | 46 |
+| Knows the care options | 18 | 46 | 29 | 10 | 27 |
+| Employer has discussed mental health | 26 | 26 | 14 | 14 | 20 |
+| Employer offers resources | 24 | 42 | 17 | 17 | 26 |
+| Anonymity is protected | 35 | 41 | 17 | 17 | 28 |
+| Leave is easy (very or somewhat) | 73 | 57 | 17 | 30 | 44 |
+| Expects consequences for raising mental health | – | 7 | 45 | 25 | 19 |
+| Comfortable talking to the supervisor | 68 | 58 | 11 | 12 | 37 |
+| Thinks it would hurt the career | 12 | 20 | 63 | 62 | 39 |
+
+- **Interpretation:**
+  - Being wary is not only a personal attitude: C and D also report that the employer communicates and provides less. Hence, openness is a lever for HR.
+  - The stigma is specific to mental health (in C, 45% expect consequences for mental health but 11% for physical health).
+  - Not knowing is widespread (55% to 73% do not know whether anonymity is protected) and strongest in D (10% know the care options).
+  - C combines a wary climate with own negative experiences (22% have experienced an unsupportive response) and difficult leave (55%).
+  - B and C report almost the same mix of conditions, so the difference between them lies in the workplace, not in the condition.
+  - D is the prevention group: no current condition, but more often unsure about their own health (33% "Maybe"), uninformed, and expecting career harm.
+  - B is 80% US-based, so part of its known support reflects US employer health insurance. Therefore, the levers focus on what transfers across health systems: openness, stigma, knowing what exists, anonymity, and leave.
+  - Gender and age describe the segments but are not targets for measures. The wary segments more often never work remotely (35% and 38% vs. 19% in A and B), so support also has to reach on-site staff (an association only).
+  - Limits: perceptions, not verified facts; associations, not causes; descriptive profiles without significance tests.
+- **Names:** A – Comfortable and confident; B – Open and supported; C – Wary, with little support; D – Cautious and not yet reached. The names refer to the workplace, and health is stated in each description instead, because nobody should be labeled by health and B and C differ in the workplace, not in their conditions. "Not yet reached" places the information gap with the organization rather than with the people; "at risk", "closed", and "fearful" were avoided as stigmatizing.
+  - Rejected: names that include health (they label people); letters only (hard for HR to remember).
+  - Before using the names, the company should check them with HR and employee representatives.
+- **Levers:** the segments set priorities but do not target individuals. Measures are offered company-wide with an emphasis per segment and address workplace conditions and access to help. Each measure is a hypothesis with its evidence strength (WHO, 2022, GRADE ratings as strength / certainty; Joyce et al., 2016).
+  - A: make existing offers and rules known (benefits, care options, anonymity, leave), as stigma hinders the use of available support (WHO, 2022, p. 2). Primary prevention.
+  - B: reasonable accommodations arranged without identifying the person to colleagues (WHO rec. 3: strong / very low; privacy p. 21) and a structured return to work (WHO rec. 11: conditional / low; Joyce et al., 2016, p. 688). Tertiary prevention.
+  - C: manager training on knowledge, attitudes, and how to respond (WHO rec. 4: strong / moderate, the best-supported measure, p. xi; Brohan et al., 2012, pp. 8–9) and a clear, confidential process for leave and accommodations with an explicit commitment that raising mental health brings no disadvantage (WHO rec. 3 and 11; Brohan et al., 2012, p. 5). Secondary and tertiary prevention.
+  - D: mental health literacy and anti-stigma measures with visible leadership statements (WHO rec. 6: conditional / very low), low-threshold and confidential ways into support that also reach on-site staff, and an optional stress-management offer (WHO rec. 8A: conditional / low; Joyce et al., 2016, p. 688). Primary and secondary prevention.
+  - Order: quick wins are making offers known and manager training (top priority because of its evidence); medium term a confidential leave and accommodation process and literacy and anti-stigma offers; long term organizational changes to psychosocial risks, developed with employees (WHO rec. 1: conditional / very low; Joyce et al., 2016, p. 693).
+  - Overall logic: a balanced mix of primary, secondary, and tertiary measures (Joyce et al., 2016, p. 694) that strengthens job resources, which can buffer the effect of demands (Bakker & Demerouti, 2007, pp. 314–315, 322).
+  - Avoided: counseling or employee assistance programs as the main lever (limited evidence; Joyce et al., 2016, pp. 688, 693), screening or using the segments to identify people (WHO, 2022, pp. 70–71), and copying US-style benefits.
+  - Caveats: the intervention evidence leans on one research network, "very low certainty" means the estimates may change, and a pilot should measure both symptoms and work outcomes, as they do not necessarily move together (Joyce et al., 2016, p. 693).
+- **Critical reflection, main points for chapter 5:**
+  1. Robustness: low silhouette scores (0.164 for k = 4; all below 0.25), so the segments cut a gradient. The profiles replicate under three methods, but the memberships agree only moderately (ARI 0.42 to 0.43), and the prevention group is the least stable (52% to 54%). Within k-means, the result is stable (seeds 0.97 to 1.00; 6 vs. 44 components 0.89), and the MDS view shows the same four regions.
+  2. Representativeness: a voluntary web survey (Bethlehem, 2010, p. 173) with a US-heavy sample (59% of all respondents and 62% of the employees work in the US), so the shares are not prevalence rates. Self-selection probably over-represents people with own experience.
+  3. Preprocessing and reduction: topics with many overlapping columns dominate (health); PCA on categorical data is only an approximation; the PCA 2D view keeps 13.8% of the variance and makes the gaps look sharper. Further judgment calls: no imputation, one-hot encoding without order, no scaling, the domain scores, the gender rule, the age bands, and the regions.
+  4. Meaning: perceptions, self-reported, at one point in time; associations, not causes; reverse effects are possible, as strained employees may perceive fewer resources (Bakker & Demerouti, 2007, p. 321). The profiles have no significance tests, and the levers are hypotheses.
+  5. Ethics: health data are a special category (GDPR Art. 9), and small groups can identify people (Rocher et al., 2019, p. 5). Hence, the minimum group size of 10 applies, the remaining risk in groups of 10 to 19 is named, and the segments are used only to design the program (WHO, 2022, pp. 70–71; GDPR Art. 22). The self-employed are not covered by the levers.
+  6. With more time: an iteration 3 with health used only for the profiles; Gower distances or multiple correspondence analysis; bootstrap stability and GMM membership probabilities per segment; imputation as a comparison; text analysis of the two "why" answers; a separate analysis of the self-employed; parallel analysis for the number of components; broader intervention evidence (LaMontagne et al., 2014).
 
-### No virtual environment
-- What: packages are installed directly into Python 3.14; Python and pip are always called as `python3.14` and `python3.14 -m pip`.
-- Why: direct installation keeps the setup simple; the explicit calls prevent mixing it up with the 3.15 alpha.
-- Likely effect: packages are shared with other projects on this computer; the versions of the project's packages are saved in `requirements.txt`.
-- With more time: use a virtual environment for a cleaner, reproducible setup.
-
-### Editor and notebook
-- What: VS Code on a Mac, with one analysis notebook (`analysis.ipynb`).
-- Open: whether repeated code moves into a separate `utils.py`.
-
-### Library workarounds
-- What: `setuptools` is installed because yellowbrick still imports `distutils`. Fallback: build the elbow and silhouette plots with scikit-learn and matplotlib. pandas 3.0 is used (text columns show as `str`).
-- Likely effect: tutorial code written for pandas 2.x may behave differently.
-
-### GitHub repository
-- What: the repository stays private until shortly before submission (step 61). `.gitignore` excludes `.ipynb_checkpoints/`, `__pycache__/` and `.DS_Store`.
-- Why: the work stays private until it is checked.
-
-## Phase 1: understanding the problem
-
-### Task and dataset (#16)
-- What: Task 1 (mental health in technology-related jobs) with the OSMI Mental Health in Tech Survey 2016 from Kaggle; only the CSV is used (1,433 rows, 63 columns).
-- Why: the dataset is suggested in the task, and the CSV is the only file needed.
-
-### Representativeness (#3)
-- What: the survey is accepted as representative, as the task states. The limitations get at most one sentence on self-selection and the US-heavy sample (59% of respondents).
-- Why: it is a premise of the scenario; arguing against it costs pages and looks like avoiding the task.
-- Likely effect: the limitation is visible but does not dominate the report.
-
-### Shared industry context (#2)
-- What: I claim a "shared industry context", not "aligned values".
-- Why: "technology-oriented" describes the field of work, not attitudes.
-
-### Limits of workplace measures (#4)
-- What: introduction and conclusion name the limits of a workplace program, because mental health has several causes outside the employer's control.
-- Why: it protects against overpromising. The multi-cause claim needs a source (Phase 2, area A).
-
-### Descriptive, not causal (#5)
-- What: levers for HR are presented as hypotheses backed by literature, not as proven effects.
-- Why: clusters show who is similar, not what causes what, and the survey is a one-time snapshot.
-
-### Easy to understand and easy to implement (#7)
-- What: few clusters, neutral plain names, labeled plots with a reading aid, explained variance stated; recommendations sorted by effort versus impact.
-- Why: HR is non-technical, and the results must be usable.
-- Likely effect: easy measures can be superficial, so structural long-term measures are marked as such.
-
-### Two kinds of "concept" (#8)
-- What: the technical concept goes into the methodology, the organizational concept for HR into the results or conclusion.
-- Why: the task's "concept for implementation" can mean either.
-
-### Iterations (#9)
-- What: only the 2-3 iterations that changed something are documented; the rest stays in the notebook and the commit history. The HR program is described as pilot, evaluate, adjust.
-- Why: the report has 7-10 pages.
-
-### Order of methods (#11)
-- What: explore, plan, preprocess, engineer and select features, reduce dimensions, cluster, evaluate, interpret, iterate.
-- Why: the task's list misses planning, preprocessing, evaluation and interpretation.
-
-### Missing values and number of clusters (#13)
-- What: structural missingness is treated differently from non-response. The number of clusters k is justified with metrics and interpretability.
-- Why: there is no ground truth, and the task does not give k.
-
-### Ethics measures (#15)
-- What: neutral cluster names, a minimum cluster size before reporting, aggregate outputs only, use for the program only; the gender-cleaning choice is documented.
-- Why: health data is a special category under the GDPR, and small clusters can identify people.
-- Likely effect: risks are weighed against usefulness; too much caution would make the results useless.
-
-### Publishing the data (#17, #18)
-- What: the unchanged CSV goes into `data/raw/` of the public repository with its original file name. The license (CC BY-SA 4.0) and OSMI are credited in the README. No task PDF and no task text in the repository or README.
-- Why: the work stays reproducible and graders can run the code; IU holds the copyright to the task.
-
-### Writing the report (#10, #19)
-- What: the final report is written in my own words; numbers in the introduction need a citable source; omissions are logged in this file.
-- Why: independent work is graded and the text is checked for plagiarism.
-
-### Open from Phase 1
-- Feature scope (#6): all questions, workplace questions only, or workplace questions for clustering with personal factors only to describe the clusters. Decided in Phase 5 (16 Oct): all questions except free text.
-- Role of dimensionality reduction (#12): for visualization only, or also before clustering. Decided in Phase 5 (16 Oct): before clustering, with PCA.
-
-## Phase 2: sources
-
-### What can be cited
-- What: peer-reviewed or primary sources in APA 7th edition. Course books, slides and webinars are not cited; Kaggle notebooks and blogs are inspiration only.
-- Why: IU citation guidelines.
-
-### Source set
-- What: 12 core sources plus the GDPR text, covering the areas domain, framework, dataset, methods, missing data, ethics and interventions.
-- Likely effect: several sources come from one research network (Harvey, Joyce, Gayed, partly LaMontagne), so the report gets one sentence on source independence.
-
-### Method citations
-- What: Rousseeuw (1987) for the silhouette score; Roweis and Saul (2000) for LLE instead of the course book's unpublished draft. Gower distance and k-modes (Gower 1971, Huang 1998) are an alternative to one-hot encoding plus k-means.
-- Decided in Phase 5 (16 Oct): not in the first iteration; one-hot and ordinal encoding with PCA and k-Means are used. MDS on a Gower distance matrix stays the "with more time" comparison.
-
-### Citations still to verify
-- Schwarz (1978), MacQueen (1967), Ward (1963), Jolliffe, Pedregosa et al. (2011), and the German provisions (§ 87 (1) BetrVG, § 5 ArbSchG) are cited only if used and only after verification.
-
-### Structure of the recommendations
-- What: recommendations are sorted by prevention level (Joyce) or into protect, promote and respond (LaMontagne, optional). Manager training is presented as a hypothesis (WHO recommendation 4).
-
-## Phase 3: data
-
-### Raw data
-- What: the raw CSV in `data/raw/` stays unchanged; all cleaning happens in the notebook.
-- Why: reproducibility.
-
-## Phase 4: exploratory data analysis
-
-### Column names
-- What: all 63 columns renamed by hand (lowercase with underscores, prefix `cur_` for the current employer, `prev_` for previous employers, suffix `_text` for free text, suffix `_list` for multi-select lists, suffix `_self_emp` for columns answered only by the self-employed).
-- Columns 48, 49 and 51 were renamed from `..._conditions_text` to `..._conditions_list` (14 Oct), because step 27b showed they are multi-select lists, not free text. Only the two "why" columns end in `_text` now.
-- Why: the original names are full questions, too long for plots and the report.
-- Likely effect: none on the results; readability only. The renaming exists only in the notebook.
-- Originals: kept in `original_columns` and in `data/column_map.csv`.
-- Column 17 was renamed from `knows_help_resources` to `knows_help_resources_self_emp` (14 Oct), because a crosstab showed that only the self-employed answered it. Learning: check who was asked before naming a column.
-- Columns 18-21 (`reveal_to_clients`, `reveal_clients_neg_impact`, `reveal_to_coworkers`, `reveal_coworkers_neg_impact`) get the same suffix `_self_emp` (decided 14 Oct, option A: consistent with columns 16 and 17, even though the names get long). Option B, keeping short names and marking it only in the codebook, was rejected because someone could then use the columns for everyone.
-- Columns 22-23 (`productivity_affected`, `productivity_pct_affected`) get the suffix too (option A again). They were renamed on 14 Oct, together and after block 2 was classified, so the notebook was rebuilt only once for the pair.
-
-### Structurally missing values
-- What: `employer_is_tech`, `role_is_tech`, `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns are not imputed. Their gaps come from the survey's skip logic ("not asked"), not from non-response.
-- Why: imputing would invent most of the answers (1,170 of 1,433 values for `role_is_tech`, 1,146 of 1,433 for each of the eight self-employed-only columns).
-- Handling: decided in Phase 5 (16 Oct): all are kept with "not asked" as their own category; `employer_is_tech` and `role_is_tech` are not merged.
-- With more time: compare results with and without these columns.
-- `cur_knows_care_options` has 133 gaps beyond the 287 self-employed. 127 of them come from employed people without benefits (72) or not eligible (55); everyone with benefits answered. It is not a clean skip rule, so the 133 count as non-response linked to an observed answer (checked 14 Oct).
-
-### Columns answered by a subgroup only
-- What: eight columns (16 to 23: `mh_coverage_self_emp`, `knows_help_resources_self_emp`, the four `reveal_..._self_emp` columns and the two productivity columns) describe only the 287 self-employed; `role_is_tech` only the 263 employed people at non-tech employers. Phase 5 (16 Oct) decided to keep them for all respondents, with "not asked" as their own category.
-- Why: for most respondents these columns contain no information.
-- Likely effect: access to help is measured by columns 4, 5 and 7 for the employed and by columns 16 and 17 for the self-employed. Openness about mental health is measured by the `cur_comfort_` and `cur_..._conseq` columns for the employed and by columns 18-21 for the self-employed; whether the two sets are comparable is not checked.
-- With more time: analyse the self-employed subgroup separately (small: 287).
-
-### Free-text answers
-- What: the free-text columns (37, 39), the condition lists (48, 49, 51) and gender are inspected only with counts, not by printing individual answers or item names.
-- Why: health details and re-identification risk (#15).
-
-### Scale levels (step 25)
-- What: scale levels are assigned per column by judgment and stored in the `scale_levels` dictionary (copied into `column_map` in step 25b on 14 Oct). Rules so far: Yes / No / "I don't know" answers are nominal; Yes / Maybe / No answers are ordinal; company size bins are ordinal; two-value columns are binary; answer sets that mix different kinds of "No" or contain "Not applicable" or "I'm not sure" are nominal.
-- Why: the survey does not state a scale level, and the encoding (Phase 6) and the distance measure (Phase 7 and 8) depend on it.
-- Likely effect: an ordinal reading keeps more information but assumes an order; a nominal reading is safer but ignores the order.
-- With more time: run the clustering with both readings for the debatable columns and compare.
-- Status: all 63 columns classified (14 Oct).
-
-### Maybe as middle category
-- What: "Maybe" is treated as the middle between No and Yes in `cur_mh_disclosure_conseq`, `cur_ph_disclosure_conseq`, `cur_comfort_coworkers` and `cur_comfort_supervisor`.
-- Why: these columns have no "I don't know" option, so Maybe plausibly marks a middle position.
-- Likely effect: Maybe can also mean "uncertain"; as ordinal, those respondents are placed between No and Yes. Distances between steps are not assumed equal.
-- With more time: test the nominal reading.
-
-### Company size
-- What: `company_size` stays ordinal and is not converted to numbers.
-- Why: the bins are unequal in width, the top bin has no upper limit, and the labels overlap at 100 and 500; any midpoint would be an invented number.
-- Likely effect: bin order is kept, differences between bins are not used.
-
-### "I don't know" answers
-- What: "I don't know" and "I am not sure" are not placed on an ordinal scale. `cur_leave_ease` is ordinal for its five steps, with "I don't know" (150 answers) as the exception. `cur_knows_care_options` is nominal; an ordinal reading (No, Not sure, Yes) is possible.
-- Why: "I don't know" is not a midpoint, and it is informative itself (742 of 1,146 answers to `cur_anonymity_protected`).
-- Likely effect: treating it as missing would discard many answers.
-- Decided in step 37b (16 Oct): one-hot encoding of all columns, so "I don't know" becomes its own 0/1 column everywhere.
-
-### Direction of "Yes"
-- What: "Yes" is the bad answer in the `_conseq` columns and the good answer in the `_comfort_` columns. The direction is aligned before answers are coded as numbers.
-- Why: otherwise a distance measure treats "Yes" as the same thing in both.
-- The same holds for the interview columns ("Yes" is the open answer) against `career_hurt_if_identified` and `coworkers_view_negatively` ("Yes" is the bad answer), and for the `prev_` columns.
-- With more time: check the other blocks for the same issue.
-- Step 37b (16 Oct): no longer needed for the encoding, because one-hot encoding gives each answer its own column; still relevant when reading cluster profiles.
-
-### Reveal columns (columns 18-21)
-- What: the four reveal columns (reveal to clients, reveal to coworkers, and the two negative-impact follow-ups) were asked only of the 287 self-employed. All four are nominal. `reveal_clients_neg_impact_self_emp` has 143 missing values even among the self-employed, because it is a conditional follow-up.
-- Why nominal: the answers mix how often someone reveals with two different reasons for "No" ("it doesn't matter" and "it would impact me negatively"), plus "Not applicable to me" and "I'm not sure", which are not midpoints.
-- Likely effect: the impact columns measure perceived, not necessarily experienced, impact: 24 people who do not reveal because it would hurt them still answered "Yes" to the impact question.
-- Correction: earlier notes described these columns as conditional on a diagnosis; the gate is the self-employed split.
-- With more time: analyse the self-employed subgroup separately.
-
-### Productivity columns (columns 22-23)
-- What: `productivity_affected` was asked only of the 287 self-employed (nominal). `productivity_pct_affected` was asked only of the 204 who answered "Yes" (ordinal: 1-25%, 26-50%, 51-75%, 76-100%).
-- Why: "Unsure" and "Not applicable to me" are not midpoints; the percentage answers are ranges, and replacing them with midpoints would invent precision.
-- Likely effect: the 83 self-employed respondents who did not say "Yes" were not asked the percentage question (structural missing values inside the subgroup). The 71% "Yes" describes the self-employed who answered; it is not compared with the employed, who were not asked.
-- Both columns carry the suffix `_self_emp` (renamed 14 Oct).
-
-### Previous-employer block (columns 24-35)
-- What: `has_prev_employers` is binary. The 11 `prev_` columns were asked only of the 1,264 respondents with previous employers; the 169 without answered none of them, with no partial answers. They are not imputed.
-- Why: the gate holds without exception, so the gaps are "not asked".
-- Likely effect: the block describes 88% of respondents. The 169 enter the clustering with "no previous employer" as their own category (decided in Phase 5, 16 Oct).
-
-### Different answer scales for previous employers
-- What: previous-employer questions use None / Some / All, current-employer questions use Yes / No / "I don't know". Their scale levels are assigned separately, and columns are not lined up by name when the two blocks are compared.
-- Why: the options differ, so "Yes" for the current employer is not "Yes, they all did".
-- Likely effect: redundancy between the two blocks (Phase 6) must be checked on a common coding, not by column name.
-
-### Previous-employer scale levels
-- What: ordinal (None < Some < All): `prev_benefits_provided`, `prev_employer_discussed_mh`, `prev_resources_offered`, `prev_mh_disclosure_conseq`, `prev_ph_disclosure_conseq`, `prev_willing_coworkers`, `prev_willing_supervisor`, `prev_mh_equals_ph`, `prev_observed_neg_conseq`. Nominal: `prev_knew_care_options` (mixes how much and when people knew; "N/A (not currently aware)" is ambiguous) and `prev_anonymity_protected` (68% "I don't know").
-- Why: the ordinal columns have a clear order of extent. Where "I don't know" is a small group (7-26%) it is an exception to the order; where it is the majority (68%) the column is nominal.
-- Likely effect: the line between 26% and 68% is a judgment call, not a rule, and "Some" covers one employer up to nearly all.
-- With more time: run both readings for the borderline columns (`prev_benefits_provided`, `prev_mh_equals_ph`, `prev_anonymity_protected`).
-
-### Observed negative consequences
-- What: the observed-negative-consequences columns of the two blocks are not compared as rates (40% for previous employers, 9% for the current employer).
-- Why: the previous-employer question covers several employers over a career, so the chance of observing a case is higher by construction.
-
-### Interview and career attitudes (columns 36-41)
-- What: the interview, career and coworker columns are ordinal. `career_hurt_if_identified` and `coworkers_view_negatively` have five steps, with the answers that report experience ("Yes, it has", "No, it has not") placed at the ends.
-- Why: the answers mix expectation and experience along one direction (would it hurt).
-- Likely effect: the placement of the experience answers is an assumption. Alternatives: nominal, or three levels (No, Maybe, Yes), which drops the information about the 135 and 91 people who report real experience.
-- With more time: run the clustering with the three-level version.
-
-### Unsupportive response and its follow-up (columns 43-44)
-- What: `observed_unsupportive_response` is nominal ("Yes, I observed" and "Yes, I experienced" are different events, not degrees). Its 89 missing values follow no skip rule and are treated as probable non-response. `observation_less_likely_reveal` is ordinal; its 776 missing values are 656 structural (not asked of people who answered "No" or gave no answer) and 120 real non-response.
-- Why: crosstabs of the two columns, and of the four groups of self-employed and previous employers, showed these rules.
-- Likely effect: only the 120 real non-responses are candidates for imputation in Phase 6.
-
-### Health-history columns (columns 45-54)
-- What: `mh_disorder_past` and `mh_disorder_current` are ordinal (No, Maybe, Yes); `diagnosed_by_professional` and `sought_treatment` are binary; `family_history_mh` is nominal. In `interferes_when_treated` and `interferes_when_not_treated`, "Not applicable to me" (39% and 33%) most likely means no condition and is handled as a structural gap, not as a scale point. Only counts are printed; free-text columns are not printed at all.
-- Why: sensitive health data (#15); the answers describe a voluntary sample.
-- Likely effect: the shares are not prevalence rates (self-selection in a survey about mental health in tech). Ordinal for "Maybe" about a fact is the weakest use of the Maybe rule; the alternative is nominal.
-- With more time: run both readings for the two disorder columns.
-- Overlap (step 29b): the four health questions are strongly linked (89% of those with a current disorder are diagnosed; 73% give the same answer for past and current; 94% of the diagnosed have sought treatment). There are no logical contradictions to fix.
-- Decided in Phase 5 (16 Oct): all four enter the clustering unchanged, accepting that health may dominate the distances.
-
-### Location columns (columns 57-60)
-- What: `country_live`, `country_work`, `us_state_live` and `us_state_work` are nominal. The state columns are missing exactly for people outside the US (593 and 582), which is structural.
-- Why: 53 and 47 distinct values would create very sparse columns and small groups that can identify people.
-- Open: group countries into a few regions and states into "US / not US" before encoding (Phase 6). Phase 5 kept all four columns. Decided in step 37a (16 Oct): countries grouped into five regions; the state columns are dropped as duplicates of the US region.
-
-### Work position (column 61)
-- What: `work_position` is a multi-select question stored as one string joined with `|`: 264 distinct values from 12 single roles; 817 respondents ticked one role, 616 ticked two to ten. It is recorded as nominal.
-- Why: one-hot encoding the raw column would create up to 263 nearly empty columns and treat "Back-end" and "Back-end|Front-end" as unrelated.
-- Done in Phase 6 (step 34c, 16 Oct): split into 12 yes/no role columns (multi-hot encoding).
-
-### Condition lists (columns 48, 49, 51)
-- What: the three condition columns are multi-select lists stored as one string joined with `|` (33, 23 and 34 single items). They are recorded as nominal and renamed to `_list`.
-- Why: few distinct answers relative to the number filled, long answers and the separator showed the structure; 55-65% of answers contain a separator.
-- Decided in Phase 5 (16 Oct): they enter the clustering, split into one yes/no column per condition; profiles report conditions only above the minimum group size. They are special-category health data, an HR program should not target by diagnosis, and rare conditions form identifiable groups.
-
-### Reasons for interview answers (columns 37, 39)
-- What: the two "why" columns are real free text (almost every answer unique, up to 2,475 characters) and are left out of the analysis.
-- Why: they would need text analysis, which is outside the scope of the report.
-- With more time: text analysis of the reasons (for example keywords or topics).
-
-### Gender (column 56)
-- What: 1,430 answers in 70 variants (54 after removing spaces and capitals). The four most common variants cover 95%; 41 variants are used by one person each. Only the five most common variants were printed.
-- Decided in Phase 6 (step 34a, 16 Oct): three categories, mapped by a rule. Options were: three categories (simple, but lumps identities and creates a small identifiable group), two categories (excludes gender-diverse people, hard to justify), or gender only to describe clusters (mapping errors cannot shape the clusters; HR should not target by gender).
-
-### Country and state of living and of work (columns 57-60)
-- What: location names are clean (no synonyms or typos). Country of living and of work differ for 26 of 1,433 respondents (1.8%), US states for 41 of 837 (4.9%).
-- Decided in Phase 5 (16 Oct): all four columns are kept. The alternative was one of each pair: work fits the HR question (employer, benefits and labour law follow the workplace); living fits access to treatment (healthcare follows residence).
-
-### Age (column 55)
-- What: `age` is ratio-scaled. Median 33, middle half 28 to 39. Step 28 found three impossible values (3, 99, 323), two unusual ones (15, 17) and one plausible high value (74).
-- Plan: set 3, 99 and 323 to missing in Phase 6, so they count as non-response and the rest of each respondent's answers stays usable. Rejected: dropping the rows (loses 62 other answers per person for one wrong field) and guessing a value (no basis in the data).
-- Decided in step 35 (16 Oct): 15 and 17 are kept (plausible, e.g. interns). The alternative was setting them to missing (the survey targets working adults; minors' data raise an extra ethical question).
-- Outliers: the 1.5 × IQR rule flags 35 respondents aged 55 to 74. They are real older workers and are not removed; the rule is used to find unusual values, not to decide about them.
-- Decided in step 35 (16 Oct): four age groups instead of the number (groups reduce the influence of single values and the re-identification risk).
-- Likely effect: without the three errors the standard deviation drops from 11.3 to 8.1, which matters for distance-based clustering.
-
-### First plots (step 29)
-- What: age histogram, a bar chart of the anonymity question, grouped bars of mental against physical health consequences, and a missing-value overview that splits each bar into "not asked" and "asked, not answered".
-- Rules: plots show shares of those who were asked, state the base in the title (for example "employed, n = 1,146"), say what was left out (the three impossible ages), and keep answers in a logical order.
-- Why: HR must be able to read the plots without the code (#7), and the missing-value plot must not make survey design look like data loss.
-- Open: which figures go into the report, and saving them as files. Phase 10.
-
-### Codebook (step 25b)
-- What: `data/column_map.csv` has six columns: position, short name, original question, scale level, group and asked_of. Step 32 added `decision` and `reason` (eight columns since 16 Oct).
-- Groups (content only): work_setting (columns 0-3, 24, 61, 62), workplace (4-15, 25-35), attitudes (18-21, 36-44), personal (16, 17, 22, 23, 45-54), demographic (55-60).
-- Why: the feature-scope decision (#6) could become a filter on the group column. With the full scope chosen in Phase 5 no filter is needed; the groups still order the cluster profiles (workplace first).
-- Judgment calls: free text is marked by the scale level, not by a group, so `gender` stays demographic. Columns 16 and 17 are personal, because the self-employed have no employer (alternative: workplace, as mirrors of columns 4 and 7). Columns 36-44 form their own attitudes group (alternative: split into workplace and personal). Productivity (22, 23) is personal and remote work (62) is work_setting (alternative: both workplace).
-
-### Who was asked (asked_of)
-- What: `asked_of` records who a question was meant for, not who answered (13 rules, from "all" for 23 columns to single follow-up rules). Gaps beyond the rule are non-response and are counted in step 26.
-- Why: keeps "not asked" and "not answered" apart (Rubin).
-- Evidence: every rule was confirmed with a crosstab or a row-by-row check. The 12 employer columns with 287 gaps are missing exactly for the self-employed. The three condition free-text columns follow their gate question (current disorder Yes, Maybe; diagnosed Yes), with 7, 5 and 5 real non-responses.
-- Limits: column 19 has no clean rule and is labelled an optional follow-up; column 5 has 133 extra gaps, mostly among people without benefits, counted as non-response.
-
-### Missing values overall (step 26)
-- What: missing values are reported per column split into "not asked" and "not answered", not as one share. 21,960 of 90,279 cells (24.3%) are missing; 20,810 of them (94.8%) are "not asked"; 1,150 are non-response, in 10 columns (two free text, three condition lists, gender and four structured columns).
-- Why: a single missing share would make survey design look like data loss and would suggest dropping columns that are only answered by a subgroup.
-- Likely effect: no column is dropped because of its missing share; whether subgroup columns stay is a feature-scope question (Phase 5).
-- Decided in step 36 (16 Oct): "no answer" category, no imputation. The options were a "no answer" category or imputation for the structured columns with non-response. Arguments: a category is simple, explainable for HR and treats skipping as meaningful; imputation is more principled when gaps depend on observed answers (as for `cur_knows_care_options`), but heavier and assumes the gaps can be predicted from other answers.
-- The table is rebuilt by the notebook and not saved as a separate file.
-
-### Observations (step 30)
-- What: my observations are collected in a separate doc, "My own thoughts & observations (my words)", with the numbers, charts and sources behind each one and a section of checks where a statement goes further than the data. They are notes; the report text is written new in my own words.
-- Why: the observations sit next to their evidence, and overstatements are caught before the report.
-- Observations so far: who answered the survey; age; anonymity when using mental health resources; expected consequences of discussing mental against physical health; interference with work when treated or not treated effectively.
-
-### Anonymity and resources (step 30)
-- What: "I don't know" about anonymity (65%) is read mainly as "no program to be anonymous about": 615 of the 742 either say their employer offers no resources or don't know whether it does. Where resources exist, 54% think they are protected, 3% think they are not, and 43% don't know.
-- Consequence: two levers for later: make support available and known in the first place, and, where it exists, explain how anonymity is protected.
-- Limit: both questions are perceptions; "no resources" can also mean "I don't know about the resources".
-
-### Need and access (step 30)
-- What: my first reading, "the more people need the help, the less they can rely on it", was tested and not supported. People with a current disorder report resources about as often as others (29% against 24%) and benefits more often (57% against 38%). Missing resources are equally common in every group (45-49%); those without an issue more often don't know about benefits (33% against 19%).
-- Consequence: the statement was corrected in the observations doc. The point for HR is that support is missing for almost half, whether they need it now or not, and that those who don't need it yet often don't know what exists.
-- Open: "an often reported concern" needs a source if it goes into the report; otherwise it is phrased as my own expectation.
-
-### Interference with work (step 30)
-- What: interference "often" is reported by 7% when treated effectively and by 56% when not ("Not applicable to me" excluded).
-- Limits: the wording "effectively" builds part of the gap in; self-reported; two different groups (876 and 965); not causal.
-
-### Sample description (step 30)
-- What: employed 80%, work in the US 59%, all company sizes represented, remote at least sometimes 77%, median age 33, gender about 73% male (before cleaning).
-- Consequence: the US share is the concrete reason for the one sentence on the limits of representativeness: employer-provided health benefits mean something different under a statutory system. The high remote share is an argument for digital and anonymous ways into support (Phase 9).
-
-## Phase 5: plan the approach
-
-### Feature scope (#6)
-- What: all survey questions enter the clustering (option A), except the two "why" free-text columns (37, 39), which cannot be clustered without text processing.
-- Why: no prior selection, so the structure is derived from the data, not from assumptions about which questions matter. The task does not prescribe a selection.
-- Likely effect: health questions and condition lists may dominate the clusters; structurally missing blocks (self-employed, no previous employer) must be handled explicitly; more columns after encoding weaken distance measures.
-- With more time: compare with a workplace-only clustering (option C) as a second iteration.
-
-### Self-employed-only columns (16-23) and role_is_tech
-- What: kept; "not asked" is coded as its own category instead of being imputed.
-- Why: consistent with the full feature scope; the gaps come from the survey's skip logic, so imputing would invent answers.
-- Likely effect: after one-hot encoding the "not asked" columns are identical, so the self-employed/employed split is counted several times and may dominate the clustering. Must be handled in Phase 6 (remove duplicate indicators or down-weight).
-- With more time: compare with a clustering of the employed only.
-- Handled in step 40 (16 Oct): exact copies and opposites removed, so the split counts once.
-
-### Respondents without previous employers (169)
-- What: the `prev_` block is kept; "no previous employer" is coded as its own category.
-- Why: consistent with the full feature scope and with the handling of the self-employed columns; the gaps are structural, not non-response.
-- Likely effect: together with the self-employed block, the clustering may separate respondents by survey path rather than by workplace experience. Duplicate "not asked" indicators must be handled in Phase 6. Possible redundancy between the `cur_` and `prev_` blocks is tested in Phase 6 (step 40: no column pair reaches |r| 0.9; duplicates removed).
-- With more time: compare with a clustering of the 1,264 with previous employers, and with a version without the `prev_` block.
-
-### Overlapping health questions (past, current, diagnosed, sought treatment)
-- What: all four enter the clustering unchanged.
-- Why: full feature scope; no transformation or subjective scoring.
-- Likely effect: health status is counted roughly four times in the distances and may dominate the clusters. Clusters broken down by health status are reported only above the minimum group size (special-category data).
-- With more time: compare with a combined health score or with a clustering without health questions.
-
-### Condition lists (48, 49, 51)
-- What: used in the clustering, split into one yes/no column per condition; "not asked" coded as its own category.
-- Why: full feature scope.
-- Likely effect: many sparse columns; health weighted further; rare conditions form tiny groups. Cluster profiles report conditions only above the minimum group size. Non-standard answers may need cleaning first (Phase 6, step 34).
-- With more time: group rare conditions into broader categories, or use the lists only to describe clusters.
-
-### Country and state columns
-- What: country of living, country of work and both US state columns are kept.
-- Why: full feature scope.
-- Likely effect: near-duplicates: country of living and of work differ for only 26 of 1,433 respondents, US states for 41 of 837 (Phase 4), so location counts almost twice. Many one-hot columns; the state columns are "not asked" outside the US; small countries or states form tiny groups and are reported only above the minimum group size.
-- With more time: keep one of each pair (work fits the HR question, living fits access to treatment).
-- Changed in step 37a (16 Oct): countries grouped into five regions; the two state columns dropped.
-
-### employer_is_tech and role_is_tech
-- What: both kept as separate columns, each with "not asked" as its own category; not merged.
-- Why: consistent with the handling of the self-employed columns; no new merge rule needed.
-- Likely effect: two partly overlapping, gated columns remain and add to the "not asked" duplication handled in Phase 6.
-- With more time: test a merged "works in tech" feature.
-
-### Role of dimensionality reduction (#12)
-- What: dimensionality reduction is applied before clustering; the clustering runs on the reduced components, not on the encoded features.
-- Why: the many sparse columns after encoding (full feature scope, "not asked" categories, condition lists, locations) make distances less informative; reduction is meant to counter overfitting and the curse of dimensionality, and partly collapses duplicated indicator columns.
-- Likely effect: clusters are not directly interpretable in component space, so profiles are built on the original, unscaled answers. Results depend on the reduction method and the number of components kept.
-- With more time: compare with clustering on the full encoded features.
-
-### Reduction method before clustering
-- What: PCA on the one-hot (nominal) and ordinal encoded data; clustering runs on the first components.
-- Why: covered by the course concepts; loadings and the correlation circle make components explainable. One-hot encoding gives equal distances between nominal answers, ordinal encoding keeps the order, so the numeric conversion reflects the category distances.
-- Likely effect: PCA assumes numeric variance, which is only approximated for categorical data. Standardizing one-hot columns would up-weight rare answers. The first component may reflect the survey path ("not asked" blocks). Variance may be spread across many components.
-- With more time: compare with MDS on a Gower distance matrix.
-
-### Pipeline draft (step 31)
-It may change later.
-1. Load: raw CSV unchanged, apply the column renaming from column_map.
-2. Clean (Phase 6):
-   - drop the two "why" free-text columns (37, 39)
-   - standardize non-standard text: gender; split the condition lists into one yes/no column per condition
-   - check numeric outliers (age)
-   - structural gaps -> "not asked" category: self-employed block (16-23), the 12 employer columns the 287 self-employed were not asked, `role_is_tech`, `prev_` block, condition lists, US state columns, and the other gated questions recorded in `asked_of`
-   - real non-response: handling still open (step 36)
-3. Encode: one-hot for nominal columns, ordinal encoding for ordered answers.
-4. Reduce redundancy: remove identical "not asked" indicators; test `cur_`/`prev_` redundancy and the country/state pairs.
-5. Scale: open (standardize vs. leave 0/1 columns unscaled).
-6. Reduce dimensions (Phase 7): PCA; choose the number of components by cumulative explained variance; interpret loadings; 2D plot for HR with explained variance stated.
-7. Cluster (Phase 8): k-Means on the components; k via elbow and silhouette (k = 2-8); compare with GMM and/or hierarchical; check stability across seeds and minimum cluster size.
-8. Interpret (Phase 9): attach labels to the cleaned, unscaled data; profile workplace questions first, then personal factors; report health, conditions and locations only above the minimum group size.
-9. Iterations: if clusters follow the survey path or health status, document this as iteration 1 and run a variant (e.g. workplace-only, combined health score, or clustering on the full encoded features).
-
-### Keep, drop or merge per column (step 32)
-- What: `column_map` has two new columns, `decision` (61 keep, 2 drop, 0 merge) and `reason` (one line per column), saved to `data/column_map.csv` (63 rows, 8 columns). Dropped: the two "why" free-text columns (37, 39).
-- Why: follows from the Phase 5 decisions; the codebook stays the one place the code filters on in Phase 6.
-- Kept after a separate look: `self_employed` and `has_prev_employers` (they repeat the "not asked" indicators of their blocks), `family_history_mh` (health-related, but not one of the four health questions), `reveal_clients_neg_impact_self_emp` (weakest column: 143 of 287 self-employed did not answer, and it measures perceived impact), `gender` (cleaning in Phase 6).
-- Likely effect: the same as for the full feature scope; the duplication is handled in Phase 6 (step 40).
-- With more time: drop the weakest columns and compare the clusters.
-
-## Phase 6: preprocessing and feature engineering
-
-### Dropped columns and thresholds (step 33)
-- What: `df_clean` is a working copy of `df` without the two columns marked "drop" in `column_map` (1,433 rows, 61 columns); `df` stays unchanged. No missingness threshold. Near-constant rule: a column is dropped if one value (counting "not asked" as a value) covers 95% or more of all rows.
-- Why: 94.8% of the gaps are "not asked", so a missingness threshold would mistake survey design for data loss. 95% is a common rule of thumb.
-- Result: no column reaches 95%. The highest shares are 0.900 (`reveal_clients_neg_impact_self_emp`), 0.882 (`has_prev_employers`) and 0.858 (`productivity_pct_affected_self_emp`); in the gated columns the top value is "not asked".
-- Likely effect: none on the column count. Within its subgroup, `role_is_tech` is almost constant (248 of 263 "Yes", 94%), which the all-rows rule does not catch.
-- With more time: apply the rule within subgroups as well.
-
-### Gender (step 34a)
-- What: `gender` mapped to three categories by a rule: answers that are "f" or contain "female" or "woman" become female; then "m", "male" or "man" as a word become male; everything else becomes other. Empty answers stay empty (3, real non-response, step 36). Result: male 1,054, female 342, other 34; the 70 original spellings split 19 / 22 / 29.
-- Why: three categories keep gender-diverse respondents in the data instead of forcing them into two; a rule avoids reading individual answers.
-- Likely effect: the rule cannot be checked answer by answer. "Other" (34 people, 2.4%, 29 spellings) probably mixes gender-diverse answers with typos and unclear answers, and lumps different identities together. It is small, so it is reported per cluster only above the minimum group size. If one-hot columns are standardized (step 38), the rare "other" column gets a large weight.
-- With more time: review the 29 "other" spellings in the notebook (output cleared before committing) and map obvious typos by hand.
-
-### Condition lists (step 34b)
-- What: each list is split into one yes/no column per condition (separator "|"). Conditions named by fewer than 10 people are grouped into one `other_condition` column per list. Where a list is empty (not asked or not answered), all its new columns stay empty; step 36 handles them. 11 + 10 + 11 frequent columns plus 3 `other_condition` columns replace the 3 lists; `df_clean` is 1,433 × 93.
-- Why: 54 of the 90 single conditions were named by fewer than 5 people; as separate columns they would add mostly noise to PCA and could identify individuals. The same threshold (10) is proposed as the minimum group size for reporting in Phase 9.
-- Result: `other_condition` is 1 for 28 (current), 23 (suspected) and 32 (diagnosed) people.
-- Likely effect: very different conditions share one column. The rare items probably come from free-text "other" answers, so spelling variants of the same condition are not merged. The three lists overlap; redundancy is checked in step 40.
-- With more time: read the rare items in the notebook and merge spelling variants before grouping.
-
-### Work position (step 34c)
-- What: `work_position` is split into 12 yes/no role columns (prefix `role__`); no grouping was needed, as every role was named by at least 12 people. `df_clean` is 1,433 × 104.
-- Result: 817 people name one role, 616 name two to ten (15 name seven or more).
-- Likely effect: people with many roles differ from others on many columns at once, so they sit far from everyone in distance-based methods. The smallest role (12 people) falls below the reporting minimum once split across clusters.
-- With more time: group the 12 roles into a few role families.
-
-### Age (step 35)
-- What: the impossible ages 3, 99 and 323 are set to missing (real non-response); 15 and 17 are kept (plausible, e.g. interns). Age is turned into four ordered groups, stored as `age_group`: under 25, 25-34, 35-44, 45 and over. The exact age stays only in `df`.
-- Why: dropping the rows would lose all other answers of those people for one wrong field; guessing a value has no basis. Groups reduce the pull of single values and the re-identification risk, and are easy for HR to read.
-- Result: under 25: 125, 25-34: 710, 35-44: 442, 45 and over: 153, missing: 3. The 35 older workers flagged by the IQR rule fall into "45 and over".
-- Likely effect: differences within a group are lost; the boundaries are a choice (ten-year bands in the middle, open groups at both ends); half of the respondents share one group.
-- With more time: compare with age as a number, or with other group boundaries.
-
-### Missing values (step 36)
-- What: every empty cell is labelled "not asked" (the question was not meant for the person, per `asked_of` and the step 26 masks) or "no answer" (meant for them, but left empty). In normal columns the labels become answer values (40 columns; 18,129 "not asked", 491 "no answer"). In the three condition blocks the empty rows become 0, and each block gets two indicator columns, `_not_asked` and `_no_answer` (858 / 7, 1,106 / 5, 717 / 5). No imputation. `df_clean` is 1,433 × 110 with no empty cells.
-- Why: keeps the Phase 4 distinction between structural gaps and non-response (Rubin); a category is simple, explainable for HR, and treats skipping as information (e.g. the 133 gaps in `cur_knows_care_options`, mostly people without benefits).
-- Likely effect: more rare indicator columns after encoding ("no answer" for gender and age: 3 people each; for the condition blocks 5–7); skipping that is random noise is treated as meaningful. The "not asked" labels repeat the survey path across many columns (duplication handled in step 40).
-- With more time: compare with imputation (e.g. `IterativeImputer` on the encoded data) for the four structured columns.
-
-### Location regions (step 37a)
-- What: `country_live` and `country_work` are mapped to five regions: US, Canada, UK, rest of Europe, rest of world (including "Other"; Russia counted as Europe). The two US state columns are dropped: as "US / not US" they would only repeat the country region.
-- Why: one-hot encoding the raw values would add around 200 sparse columns, many of them single people; regions have a clear meaning for HR.
-- Checked: the countries sorted into "rest of world" were listed in the notebook; no European country or UK spelling was missed.
-- Likely effect: changes the Phase 5 decision to keep all four location columns (the state detail is lost); regions hide differences inside them (e.g. labour law and health systems within Europe); the region boundaries are a choice.
-- With more time: compare with the threshold rule (countries named by fewer than 10 people grouped).
-
-### Encoding (step 37b)
-- What: every non-numeric column (52) is one-hot encoded, ordinal columns and 0/1 columns with "not asked" included; each answer, including "not asked", "no answer", "I don't know" and "Not applicable", becomes its own 0/1 column. Columns that were already 0/1 (condition blocks, roles, indicators, `self_employed`, `has_prev_employers`, `sought_treatment`) stay as they are. The result is `df_encoded`, 1,433 × 286, all values 0 or 1, no empty cells; `df_clean` keeps the readable answers for the cluster profiles.
-- Why: one rule for all columns; no order or equal distances are assumed; off-scale answers need no artificial place on a scale; the direction of "Yes" needs no alignment.
-- Likely effect: the order from Phase 4 is lost (e.g. "Maybe" is not between "No" and "Yes" for the model); more columns (about 5 people per feature); the Phase 4 scale levels are used for documentation and profiles, not for the encoding.
-- With more time: ordinal encoding for the columns without off-scale answers, and compare.
-
-### Scaling (step 38)
-- What: no scaling; all 286 features stay 0/1. `X` (a copy of `df_encoded`) is the input for Phase 7.
-- Why: all features already share one range, so the usual reason for standardizing (different units) does not apply. Standardizing would turn rare answers into large values, let near-empty indicator columns dominate PCA, weight questions by their number of answer options and strengthen the repeated "not asked" columns.
-- Result: the spread per column ranges from 0.0014 (about 2 people with a 1) to 0.25 (half); 14 columns have a 1 for fewer than 1% of people, 66 for fewer than 5%.
-- Likely effect: rare answers (e.g. "other" gender, rare conditions, "no answer") hardly influence the components, so small groups that matter for HR can be overlooked. Pure 0/1 columns that were not one-hot encoded (e.g. `self_employed`) carry one column of spread, while one-hot questions spread theirs over several.
-- With more time: weight each question equally (the idea behind multiple correspondence analysis) and compare.
-
-### Domain features (step 39)
-- What: two scores from several questions, each from 0 to 1, stored in a separate table `scores`.
-  - Known support (`support_score`): share of four support offers answered "Yes" (benefits, resources, formal discussion, protected anonymity); "No" and "I don't know" count as 0. Employed only (1,146); used only for the cluster profiles, not in `X`, because it does not exist for the self-employed.
-  - Perceived stigma (`stigma_score`): average of career harm and coworkers' negative view (five steps 0 / 0.25 / 0.5 / 0.75 / 1, experienced harm highest) and not raising mental health in an interview (reversed: No 1, Maybe 0.5, Yes 0). All 1,433; added to `X` next to its source columns (`X` is 1,433 × 287).
-- Why: builds features from domain knowledge (course concept); gives HR two readable measures.
-- Result: support mean 0.30, median 0.25, at least a quarter of the employed know none of the four; "Yes" for benefits 531, resources 295, discussion 230, anonymity 320 (of 1,146). Stigma mean 0.62, median 0.67, standard deviation 0.19.
-- Likely effect: the weights (equal per question, equal steps) are a choice; "I don't know" counts as no support; stigma information counts twice in PCA, but the score's spread (about 0.036) is smaller than that of a balanced 0/1 column, so the extra weight is modest.
-- With more time: test whether the items of each score belong together (e.g. Cronbach's alpha) and try other weights.
-
-### Redundancy (step 40)
-- What: columns that are exact copies or exact opposites of another column (|r| = 1) are removed, one column kept per group; real answer columns are preferred over "not asked" and "no answer" columns. 38 columns removed; `X` is 1,433 × 249; no perfectly correlated pair left.
-- Why: such columns hold no extra information. Without this step, "self-employed or not" sat in `X` about 22 times and "previous employers or not" about 12 times, which would have dominated PCA and inflated its explained variance.
-- Result before removal: 31 exact copies, 304 pairs with |r| = 1, and only 9 more pairs at |r| ≥ 0.9: the five region pairs living vs. working (0.95-0.98), `role_is_tech` vs. non-tech employer (0.96), female vs. male (0.93), and "Not applicable" for revealing to clients and to coworkers (0.91). No `cur_`/`prev_` pair reaches 0.9, so both blocks stay.
-- Likely effect: lossless for every person. The survey path still counts once and may still shape a component or cluster, which is a real difference, since the self-employed answer different questions. Near-duplicates are left to PCA. The `cur_`/`prev_` check is pairwise only; a block could still be largely explained by the other block as a whole.
-- With more time: test block-level redundancy (e.g. how well the `prev_` block predicts the `cur_` block) and compare with also removing the near-duplicates.
-
-## Phase 7: dimensionality reduction
-
-### Number of PCA components (step 42)
-- What: PCA with all components on `X` (1,433 × 249, unscaled). No single number is fixed yet: two candidates go into the clustering, 4 components (the elbow of the scree plot, about 22% of the variance) and 47 components (70% of the variance). The final number is chosen in step 49 together with the clustering model, by stability across random seeds and how interpretable the profiles are. The elbow candidate was confirmed at 4 after step 43 (see below).
-- Result: PC1 explains 7.7%, PC2 5.9%, the first two together 13.6%, the first ten about 35%. The scree plot bends clearly after 4 components and slightly again after 7 (2.4% to 2.0%); from about 13 on it is almost flat. Components needed for 50% / 70% / 80% / 90%: 22 / 47 / 65 / 94. The cumulative curve reaches almost 100% at about 150 components; the rest carry almost no variance, partly because the one-hot columns of a question with three or more answers add up to 1, partly because rare answers have very little spread.
-- Why: the elbow keeps the strongest structure in few dimensions, where k-Means works best and every component can be explained; 70% keeps most of the information. Neither rule is clearly right for categorical survey data, so the choice rests on the clustering result, and the comparison gives one of the documented iterations (#9).
-- Rejected as the only rule: the elbow alone (drops about three quarters of the variance; the components with the most variance need not separate groups; PC1 may only reflect the survey path); 80% or 90% alone (65 or 94 dimensions weaken distances again and come close to clustering on `X` itself, since PCA only rotates the data); eigenvalue above 1 (only meaningful for standardized data); above-average variance and parallel analysis (less subjective, but no citable source in the source set, and parallel analysis needs extra code).
-- Likely effect: the clustering runs twice in Phase 8. Silhouette scores are not compared between the two candidates, because they tend to look better in fewer dimensions. The 2D plot keeps only 13.6% of the variance; this is stated next to every 2D figure (#7).
-- With more time: parallel analysis as a rule-based check of the number of components.
-
-### Component interpretation (step 43)
-- What: the first seven components are read from their 8 strongest weights (of 249); the labels of PC1 and PC2 are tested against the data (average component score per answer group).
-- Result:
-  - PC1 (7.7%): health status (past or current disorder, diagnosis, treatment vs. none). Test: average PC1 score +1.36 for "No" current disorder (531), +0.20 for "Maybe" (327), -1.37 for "Yes" (575).
-  - PC2 (5.9%): self-employed vs. employed (survey path). Test: self-employed +2.48 (287), employed -0.62 (1,146).
-  - PC3 (4.6%): openness vs. perceived stigma at the current workplace (comfort with coworkers and supervisor, expected career harm, raising it in an interview).
-  - PC4 (3.4%): support from previous employers (none vs. some), mixed with US vs. outside the US.
-  - PC5 (2.8%): "Some" and "Maybe" answers; mixed experiences across previous employers, or a habit of picking middle answers.
-  - PC6: having seen poor handling (mainly at previous employers) vs. not; partly also having previous employers or not.
-  - PC7: US vs. outside the US, mixed with no negative consequences seen at previous employers.
-- Correlation circle (PC1, PC2): the 12 longest arrows (length 0.70-0.94) are all health columns along PC1 (r 0.69-0.80) or self-employment columns along PC2 (r 0.72-0.93), at right angles to each other, so the two patterns are nearly unrelated. `cur_observed_neg_conseq_No` (r -0.82 with PC2) shows the survey path still counts more than once: almost every employed person answered "No", so the column is close to "not self-employed" (a near-duplicate that step 40 left to PCA). The 2D view shows health and self-employment well and other topics hardly at all, which matters for the 2D plot for HR.
-- Finding: the current employer's support (benefits, resources, knowing the care options), HR's main lever, has no component of its own among the first seven.
-- Why: PCA on unscaled one-hot data gives a topic more weight the more columns it has. Health has 4 questions, 35 condition columns and the interference questions; previous employers have 11 questions with 3-5 answers each; current support has a few questions. The order of the components partly reflects the encoding, not only how much people differ.
-- Decision: the elbow candidate stays at 4. Rejected: 5 (adds the unclear PC5) and 7 (adds having seen poor handling, but brings location in a second time, PC5 may be an answering habit, and the second bend is weak). Current support is expected to enter through the 47-component candidate.
-- Likely effect: the 4-component clustering will probably split people by health status and self-employment, neither of which HR can act on. The self-employed sit far from everyone else on PC2 and will likely form their own cluster. This would be iteration 1; a variant (employed-only or workplace-only) becomes likely for iteration 2.
-- With more time: weight each question equally (multiple correspondence analysis), so topics with many columns do not dominate the components.
-
-## Open decisions (summary)
-
-- Minimum group size for reporting: 10 proposed (same as the condition threshold in step 34b); confirm before Phase 9.
-- Number of PCA components used for clustering: two candidates from step 42 (4 and 47); elbow candidate confirmed after step 43; final choice in step 49 (Phase 8).
-- Nonlinear method (step 44): skip and log as omission, MDS for the 2D plot only, MDS on Gower as a second clustering input, or LLE. Phase 7.
-- Which observations and figures go into the report, and saving the figures as files. Phase 10.
-- A source for "an often reported concern" (need and access), or rephrase it as my own expectation. Phase 10.
-- Citable sources for reducing dimensions before clustering and for PCA on categorical data (the course book cannot be cited). Phase 10.
